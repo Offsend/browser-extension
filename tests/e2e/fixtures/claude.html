@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Claude fixture</title>
+  </head>
+  <body>
+    <main>
+      <section id="conversation" aria-label="Conversation"></section>
+      <div role="textbox" contenteditable="true" class="ProseMirror" aria-label="Talk to Claude"></div>
+      <button type="button" aria-label="Send Message">Send</button>
+    </main>
+    <script>
+      const composer = document.querySelector('[role="textbox"]');
+      const send = document.querySelector('button[aria-label="Send Message"]');
+      const conversation = document.querySelector('#conversation');
+
+      function submit() {
+        const text = composer.innerText;
+        const user = document.createElement('p');
+        user.dataset.role = 'user';
+        user.textContent = text;
+        conversation.append(user);
+
+        const assistant = document.createElement('p');
+        assistant.dataset.role = 'assistant';
+        assistant.textContent = `Claude saw: ${text}`;
+        conversation.append(assistant);
+      }
+
+      send.addEventListener('click', submit);
+      composer.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) submit();
+      });
+    </script>
+  </body>
+</html>

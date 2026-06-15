@@ -1,0 +1,14 @@
+node_modules
+.output
+.wxt
+stats.html
+*.log
+.DS_Store
+coverage
+dist
+playwright-report
+test-results
+*.zip
+.env
+.env.*
+internal-docs

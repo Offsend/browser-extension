@@ -1,0 +1,54 @@
+{
+  "name": "offsend-extension",
+  "version": "0.0.2",
+  "description": "Offsend browser extension — local detection & masking of sensitive data before it reaches web AI interfaces.",
+  "private": true,
+  "type": "module",
+  "author": "Simon Hudishkin <saman1303@gmail.com>",
+  "homepage": "https://github.com/offsend/browser-extension#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Offsend/browser-extension.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Offsend/browser-extension/issues"
+  },
+  "scripts": {
+    "dev": "wxt",
+    "dev:firefox": "wxt -b firefox",
+    "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
+    "zip": "wxt zip",
+    "compile": "tsc --noEmit",
+    "typecheck": "wxt prepare && tsc --noEmit",
+    "test": "vitest run",
+    "pretest:e2e": "npm run build",
+    "test:e2e": "playwright test -c playwright.config.ts",
+    "pretest:canary": "npm run build",
+    "test:canary": "OFFSEND_CANARY=1 playwright test -c playwright.config.ts --project=canary",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "postinstall": "wxt prepare"
+  },
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.60.0",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@wxt-dev/module-react": "^1.2.2",
+    "eslint": "^10.5.0",
+    "happy-dom": "^20.10.3",
+    "prettier": "^3.8.4",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.0",
+    "vitest": "^4.1.8",
+    "wxt": "^0.20.26"
+  },
+  "dependencies": {
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  }
+}

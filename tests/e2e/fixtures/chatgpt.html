@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>ChatGPT fixture</title>
+  </head>
+  <body>
+    <main>
+      <section id="conversation" aria-label="Conversation"></section>
+      <form id="composer-form">
+        <div
+          id="prompt-textarea"
+          role="textbox"
+          contenteditable="true"
+          aria-label="Message ChatGPT"
+        ></div>
+        <button type="button" data-testid="send-button" aria-label="Send prompt">Send</button>
+      </form>
+    </main>
+    <script>
+      const composer = document.querySelector('#prompt-textarea');
+      const send = document.querySelector('[data-testid="send-button"]');
+      const conversation = document.querySelector('#conversation');
+
+      function submit() {
+        const text = composer.innerText;
+        const user = document.createElement('p');
+        user.dataset.role = 'user';
+        user.textContent = text;
+        conversation.append(user);
+
+        const assistant = document.createElement('p');
+        assistant.dataset.role = 'assistant';
+        assistant.textContent = `Received: ${text}`;
+        conversation.append(assistant);
+      }
+
+      send.addEventListener('click', submit);
+      composer.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) submit();
+      });
+    </script>
+  </body>
+</html>
