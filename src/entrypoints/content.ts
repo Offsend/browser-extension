@@ -82,6 +82,12 @@ export default defineContentScript({
     let unsubscribe: (() => void) | null = composer ? wire(composer) : null;
 
     const reportHealth = () => {
+      // No live composer wired yet → the adapter matched but isn't protecting,
+      // so the toolbar badge shows "preparing" (amber) until we're ready.
+      if (!composer || !unsubscribe) {
+        void send({ type: 'report-health', adapterId: adapter.id, status: 'connecting' });
+        return;
+      }
       const health = adapter.healthCheck(document);
       void send({
         type: 'report-health',

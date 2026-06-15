@@ -32,6 +32,7 @@ describe('SettingsStore', () => {
     await store.saveSettings({
       policy: { mode: 'auto-mask', enabledTypes: null, allowlist: ['example.com'] },
       mappingTtlMinutes: 120,
+      telemetryEnabled: false,
     });
     const reloaded = await store.getSettings();
     expect(reloaded.policy.mode).toBe('auto-mask');

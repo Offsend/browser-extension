@@ -12,7 +12,9 @@ into a web AI chat, Offsend spots API keys, tokens, private keys, and personal d
 Changed your mind? One-click **Restore** brings the originals back.
 
 > **Local-first by design.** Your prompts never leave the device for scanning. The
-> network is used only for license and updates — verifiable with any network filter.
+> network is used only for license, updates, and an optional anonymous "active
+> install" ping (no content, no findings, no sites) — all verifiable with any
+> network filter, and the ping is one toggle away from off.
 
 ```
 No cloud account · No server-side scanning · No "trust us"
@@ -104,6 +106,17 @@ npm run test:canary
 1. `npm run build`
 2. Open `chrome://extensions`, enable Developer mode.
 3. "Load unpacked" → select `.output/chrome-mv3`.
+
+## Telemetry
+
+Offsend counts active installs and nothing else. When enabled (default, with an
+opt-out in Settings → Privacy), the background worker sends at most one anonymous
+ping per day to [TelemetryDeck](https://telemetrydeck.com/) (EU-hosted,
+cookieless). The payload is only an app ID, a locally-hashed random id, and the
+fixed event `app.alive` — never prompt content, findings, or which AI site you
+use. The id is a random UUID stored on-device and SHA-256 hashed before it
+leaves; TelemetryDeck hashes it again server-side. Counting is off entirely until
+an app ID is configured in `src/core/telemetry/config.ts`.
 
 ## Security
 

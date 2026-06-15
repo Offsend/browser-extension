@@ -1,4 +1,5 @@
 import type { Finding, FindingType } from '@/core/detection';
+import { Badge, Button, FONT_MONO, useTheme, type Theme } from '@/ui';
 
 export interface ReviewState {
   readonly findings: readonly Finding[];
@@ -37,54 +38,137 @@ function countByType(findings: readonly Finding[]): Array<[FindingType, number]>
   return [...counts.entries()];
 }
 
-function ReviewCard({ review }: { review: ReviewState }) {
+function ReviewCard({ t, review }: { t: Theme; review: ReviewState }) {
   const total = review.findings.length;
   return (
-    <div className="card" role="dialog" aria-label="Offsend review">
-      <p className="card__title">
-        <span className="card__brand">Offsend</span> — {total} sensitive{' '}
-        {total === 1 ? 'value' : 'values'} found
-      </p>
-      <ul className="findings">
+    <div
+      role="dialog"
+      aria-label="Offsend review"
+      style={{
+        width: 360,
+        background: t.card,
+        color: t.text,
+        border: `1px solid ${t.border}`,
+        borderRadius: 14,
+        boxShadow: t.popShadow,
+        padding: '14px 16px',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <img
+          src={browser.runtime.getURL('/icons/128.png')}
+          alt=""
+          width={22}
+          height={22}
+          style={{ borderRadius: 6, display: 'block', flexShrink: 0 }}
+        />
+        <span style={{ fontSize: 13.5, fontWeight: 600 }}>
+          {total} sensitive {total === 1 ? 'value' : 'values'} found
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
         {countByType(review.findings).map(([type, n]) => (
-          <li key={type} className="chip">
+          <Badge key={type} t={t} tone="warn">
             {TYPE_LABEL[type]}
             {n > 1 ? ` ×${n}` : ''}
-          </li>
+          </Badge>
         ))}
-      </ul>
-      <pre className="preview">{review.masked}</pre>
-      <div className="actions">
-        <button className="btn" onClick={review.onCancel}>
+      </div>
+
+      <pre
+        style={{
+          fontSize: 12,
+          background: t.bg2,
+          border: `1px solid ${t.border}`,
+          borderRadius: 8,
+          padding: 8,
+          margin: '0 0 14px',
+          maxHeight: 96,
+          overflow: 'auto',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          fontFamily: FONT_MONO,
+          color: t.textSub,
+        }}
+      >
+        {review.masked}
+      </pre>
+
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <Button t={t} variant="ghost" sm onClick={review.onCancel}>
           Cancel
-        </button>
+        </Button>
         {review.canSendAnyway && (
-          <button className="btn" onClick={review.onSendAnyway}>
+          <Button t={t} variant="outline" sm onClick={review.onSendAnyway}>
             Send anyway
-          </button>
+          </Button>
         )}
-        <button className="btn btn--primary" onClick={review.onMaskSend}>
+        <Button t={t} variant="primary" sm onClick={review.onMaskSend}>
           Mask &amp; send
-        </button>
+        </Button>
       </div>
     </div>
   );
 }
 
-export function Overlay({ state }: { state: OverlayState }) {
+function Toast({ t, toast }: { t: Theme; toast: ToastState }) {
   return (
-    <div className="layer">
-      {state.review && <ReviewCard review={state.review} />}
-      <div className="toasts">
-        {state.toasts.map((t) => (
-          <div key={t.id} className="toast">
-            <span>{t.text}</span>
-            {t.action && (
-              <button className="toast__action" onClick={t.action.onClick}>
-                {t.action.label}
-              </button>
-            )}
-          </div>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        background: t.card,
+        color: t.text,
+        border: `1px solid ${t.border2}`,
+        borderRadius: 999,
+        padding: '8px 14px',
+        fontSize: 12.5,
+        boxShadow: t.popShadow,
+      }}
+    >
+      <span>{toast.text}</span>
+      {toast.action && (
+        <button
+          onClick={toast.action.onClick}
+          style={{
+            background: 'transparent',
+            border: 0,
+            padding: 0,
+            color: t.blueText,
+            fontWeight: 600,
+            cursor: 'pointer',
+            fontSize: 12.5,
+          }}
+        >
+          {toast.action.label}
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function Overlay({ state }: { state: OverlayState }) {
+  const t = useTheme();
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        right: 16,
+        bottom: 16,
+        zIndex: 2147483647,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-end',
+        gap: 8,
+        maxWidth: 360,
+      }}
+    >
+      {state.review && <ReviewCard t={t} review={state.review} />}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+        {state.toasts.map((toast) => (
+          <Toast key={toast.id} t={t} toast={toast} />
         ))}
       </div>
     </div>

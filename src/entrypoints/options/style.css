@@ -2,90 +2,11 @@
   color-scheme: light dark;
 }
 
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-}
-
-.opt {
-  max-width: 560px;
-  margin: 0 auto;
-  padding: 24px 20px 48px;
-}
-
-.opt__title {
-  font-size: 20px;
-  margin: 0 0 20px;
-}
-
-.opt__group {
-  margin-bottom: 24px;
-}
-
-.opt__h {
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  opacity: 0.6;
-  margin: 0 0 10px;
-}
-
-.opt__radio,
-.opt__check {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  padding: 4px 0;
-}
-
-.opt__types {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2px 16px;
-}
-
-.opt__input,
-.opt__textarea {
-  width: 100%;
-  padding: 8px 10px;
-  font-size: 14px;
-  border: 1px solid #d0d7de;
-  border-radius: 8px;
-  background: transparent;
-  color: inherit;
-  box-sizing: border-box;
-  font-family: inherit;
-}
-
-.opt__input {
-  width: 120px;
-}
-
-.opt__actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 8px;
-}
-
-.opt__btn {
-  padding: 8px 16px;
-  font-size: 14px;
-  border: 1px solid #d0d7de;
-  border-radius: 8px;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-}
-
-.opt__btn--primary {
-  background: #1f6feb;
-  border-color: #1f6feb;
-  color: #fff;
-}
-
-.opt__saved {
-  color: #137333;
-  font-size: 14px;
 }

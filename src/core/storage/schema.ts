@@ -15,6 +15,12 @@ export interface Settings {
   readonly policy: Policy;
   /** Restore mapping lifetime, minutes. */
   readonly mappingTtlMinutes: number;
+  /**
+   * Send a single anonymous "active install" ping so we can count active users.
+   * No prompt content, findings, or destination sites are ever included.
+   * Opt-out: on by default, one line away from opt-in (see DEFAULT_SETTINGS).
+   */
+  readonly telemetryEnabled: boolean;
 }
 
 /** Root persisted object. Bump SCHEMA_VERSION whenever this shape changes. */
@@ -23,7 +29,7 @@ export interface StoredState {
   readonly settings: Settings;
 }
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const DEFAULT_SETTINGS: Settings = {
   policy: {
@@ -32,6 +38,7 @@ export const DEFAULT_SETTINGS: Settings = {
     allowlist: [],
   },
   mappingTtlMinutes: 60,
+  telemetryEnabled: true,
 };
 
 export const DEFAULT_STATE: StoredState = {

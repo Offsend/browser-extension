@@ -7,6 +7,29 @@ import {
   type PolicyMode,
   type Settings,
 } from '@/core/storage';
+import {
+  Badge,
+  Button,
+  Group,
+  ICheck,
+  Row,
+  TextArea,
+  TextInput,
+  Toggle,
+  useTheme,
+  type Theme,
+} from '@/ui';
+
+const TYPE_LABEL: Record<FindingType, string> = {
+  email: 'Email addresses',
+  phone: 'Phone numbers',
+  api_key: 'API keys',
+  token: 'Tokens',
+  private_key: 'Private keys',
+  credit_card: 'Credit cards',
+  ip_address: 'IP addresses',
+  uuid: 'UUIDs',
+};
 
 const ALL_TYPES: readonly FindingType[] = [
   'email',
@@ -19,13 +42,31 @@ const ALL_TYPES: readonly FindingType[] = [
   'uuid',
 ];
 
-const MODES: readonly { value: PolicyMode; label: string }[] = [
-  { value: 'warn', label: 'Warn — review before sending (default)' },
-  { value: 'auto-mask', label: 'Auto-mask — mask and send, then notify' },
-  { value: 'block', label: 'Block — must mask before sending' },
+const MODES: readonly { value: PolicyMode; label: string; hint: string }[] = [
+  { value: 'warn', label: 'Warn', hint: 'Review findings before anything is sent. (Default)' },
+  { value: 'auto-mask', label: 'Auto-mask', hint: 'Mask and send, then show a quiet notification.' },
+  { value: 'block', label: 'Block', hint: 'Sending is blocked until sensitive values are masked.' },
 ];
 
+function Radio({ t, on }: { t: Theme; on: boolean }) {
+  return (
+    <span
+      style={{
+        width: 18,
+        height: 18,
+        borderRadius: '50%',
+        border: on ? `5px solid ${t.blue}` : `1.5px solid ${t.border2}`,
+        background: on ? '#fff' : 'transparent',
+        flexShrink: 0,
+        transition: 'all 0.12s',
+        boxSizing: 'border-box',
+      }}
+    />
+  );
+}
+
 export function App() {
+  const t = useTheme();
   const store = useMemo(
     () => new SettingsStore(createBrowserBackend(browser.storage.local)),
     [],
@@ -37,10 +78,26 @@ export function App() {
     void store.getSettings().then(setSettings);
   }, [store]);
 
-  if (!settings) return <main className="opt">Loading…</main>;
+  if (!settings) {
+    return (
+      <main
+        style={{
+          minHeight: '100vh',
+          background: t.bg0,
+          color: t.textSub,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 13,
+        }}
+      >
+        Loading…
+      </main>
+    );
+  }
 
   const enabled = settings.policy.enabledTypes;
-  const isTypeOn = (t: FindingType) => enabled === null || enabled.includes(t);
+  const isTypeOn = (ty: FindingType) => enabled === null || enabled.includes(ty);
 
   const update = (next: Settings) => {
     setSettings(next);
@@ -50,9 +107,9 @@ export function App() {
   const setPolicy = (patch: Partial<Settings['policy']>) =>
     update({ ...settings, policy: { ...settings.policy, ...patch } });
 
-  const toggleType = (t: FindingType) => {
+  const toggleType = (ty: FindingType) => {
     const current = enabled === null ? [...ALL_TYPES] : [...enabled];
-    const nextList = isTypeOn(t) ? current.filter((x) => x !== t) : [...current, t];
+    const nextList = isTypeOn(ty) ? current.filter((x) => x !== ty) : [...current, ty];
     setPolicy({ enabledTypes: nextList.length === ALL_TYPES.length ? null : nextList });
   };
 
@@ -62,75 +119,171 @@ export function App() {
   };
 
   return (
-    <main className="opt">
-      <h1 className="opt__title">Offsend Settings</h1>
-
-      <section className="opt__group">
-        <h2 className="opt__h">Mode</h2>
-        {MODES.map((m) => (
-          <label key={m.value} className="opt__radio">
-            <input
-              type="radio"
-              name="mode"
-              checked={settings.policy.mode === m.value}
-              onChange={() => setPolicy({ mode: m.value })}
-            />
-            {m.label}
-          </label>
-        ))}
-      </section>
-
-      <section className="opt__group">
-        <h2 className="opt__h">Detectors</h2>
-        <div className="opt__types">
-          {ALL_TYPES.map((t) => (
-            <label key={t} className="opt__check">
-              <input type="checkbox" checked={isTypeOn(t)} onChange={() => toggleType(t)} />
-              {t}
-            </label>
-          ))}
+    <div style={{ minHeight: '100vh', background: t.bg0, color: t.text }}>
+      <header
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 5,
+          background: `color-mix(in oklch, ${t.bg0} 88%, transparent)`,
+          backdropFilter: 'blur(12px)',
+          borderBottom: `1px solid ${t.border}`,
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 640,
+            margin: '0 auto',
+            padding: '14px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: t.text }}>Settings</h1>
+          <Badge t={t} tone="ok" dot>
+            Local-only
+          </Badge>
         </div>
-      </section>
+      </header>
 
-      <section className="opt__group">
-        <h2 className="opt__h">Restore TTL (minutes)</h2>
-        <input
-          className="opt__input"
-          type="number"
-          min={1}
-          value={settings.mappingTtlMinutes}
-          onChange={(e) =>
-            update({ ...settings, mappingTtlMinutes: Math.max(1, Number(e.target.value) || 1) })
-          }
-        />
-      </section>
+      <main style={{ maxWidth: 640, margin: '0 auto', padding: '24px 20px 56px' }}>
+        <Group
+          t={t}
+          title="Mode"
+          hint="How Offsend reacts when it finds sensitive data in a prompt."
+        >
+          {MODES.map((m) => (
+            <button
+              key={m.value}
+              onClick={() => setPolicy({ mode: m.value })}
+              style={{
+                display: 'flex',
+                width: '100%',
+                alignItems: 'center',
+                gap: 12,
+                padding: '12px 0',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+            >
+              <Radio t={t} on={settings.policy.mode === m.value} />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: t.text }}>
+                  {m.label}
+                </span>
+                <span
+                  style={{ display: 'block', fontSize: 11.5, color: t.textSub, marginTop: 3 }}
+                >
+                  {m.hint}
+                </span>
+              </span>
+            </button>
+          ))}
+        </Group>
 
-      <section className="opt__group">
-        <h2 className="opt__h">Allowlist (one host per line)</h2>
-        <textarea
-          className="opt__textarea"
-          rows={4}
-          value={settings.policy.allowlist.join('\n')}
-          onChange={(e) =>
-            setPolicy({
-              allowlist: e.target.value
-                .split('\n')
-                .map((s) => s.trim())
-                .filter(Boolean),
-            })
-          }
-        />
-      </section>
+        <Group
+          t={t}
+          title="Detectors"
+          hint="Choose which kinds of sensitive values Offsend scans for."
+        >
+          {ALL_TYPES.map((ty) => (
+            <Row key={ty} t={t} label={TYPE_LABEL[ty]}>
+              <Toggle t={t} on={isTypeOn(ty)} onChange={() => toggleType(ty)} />
+            </Row>
+          ))}
+        </Group>
 
-      <div className="opt__actions">
-        <button className="opt__btn" onClick={() => update(DEFAULT_SETTINGS)}>
-          Reset to defaults
-        </button>
-        <button className="opt__btn opt__btn--primary" onClick={save}>
-          Save
-        </button>
-        {saved && <span className="opt__saved">Saved</span>}
-      </div>
-    </main>
+        <Group t={t} title="Masking">
+          <Row
+            t={t}
+            label="Restore window"
+            hint="How long encrypted mappings are kept so you can restore originals."
+          >
+            <TextInput
+              t={t}
+              type="number"
+              min={1}
+              width={92}
+              value={settings.mappingTtlMinutes}
+              onChange={(v) =>
+                update({ ...settings, mappingTtlMinutes: Math.max(1, Number(v) || 1) })
+              }
+            />
+            <span style={{ fontSize: 12, color: t.textSub }}>min</span>
+          </Row>
+        </Group>
+
+        <Group
+          t={t}
+          title="Privacy"
+          hint="Offsend never sends prompt content anywhere. The only optional signal is an anonymous “active install” ping (no content, no findings, no sites) so we can count active users."
+        >
+          <Row
+            t={t}
+            label="Anonymous usage ping"
+            hint="Sends at most one anonymous ping per day. Turn off to send nothing at all."
+          >
+            <Toggle
+              t={t}
+              on={settings.telemetryEnabled}
+              onChange={() =>
+                update({ ...settings, telemetryEnabled: !settings.telemetryEnabled })
+              }
+            />
+          </Row>
+        </Group>
+
+        <Group
+          t={t}
+          title="Allowlist"
+          hint="Hosts listed here are never scanned. One host per line."
+        >
+          <div style={{ padding: '14px 0' }}>
+            <TextArea
+              t={t}
+              rows={4}
+              mono
+              placeholder="chat.internal.example.com"
+              value={settings.policy.allowlist.join('\n')}
+              onChange={(v) =>
+                setPolicy({
+                  allowlist: v
+                    .split('\n')
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+                })
+              }
+            />
+          </div>
+        </Group>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+          <Button t={t} variant="outline" onClick={() => update(DEFAULT_SETTINGS)}>
+            Reset to defaults
+          </Button>
+          <div style={{ flex: 1 }} />
+          {saved && (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                fontSize: 12.5,
+                color: t.greenText,
+              }}
+            >
+              <ICheck size={12} color={t.green} />
+              Saved
+            </span>
+          )}
+          <Button t={t} variant="primary" onClick={save}>
+            Save changes
+          </Button>
+        </div>
+      </main>
+    </div>
   );
 }

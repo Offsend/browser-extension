@@ -8,7 +8,7 @@ export type OffsendMessage =
   | {
       readonly type: 'report-health';
       readonly adapterId: string | null;
-      readonly status: AdapterHealthStatus;
+      readonly status: AdapterHealthStatus | 'connecting';
       readonly reason?: string;
     }
   | { readonly type: 'get-health'; readonly tabId: number };
@@ -17,10 +17,14 @@ export interface MappingsReply {
   readonly mappings: MappingEntry[];
 }
 
-/** Health snapshot of a tab, surfaced in the popup. `inactive` = no adapter. */
+/**
+ * Health snapshot of a tab, surfaced in the popup and the toolbar badge.
+ * `inactive` = no adapter for this tab; `connecting` = adapter matched but the
+ * composer isn't wired yet (warming up).
+ */
 export interface HealthReply {
   readonly adapterId: string | null;
-  readonly status: AdapterHealthStatus | 'inactive';
+  readonly status: AdapterHealthStatus | 'connecting' | 'inactive';
   readonly reason?: string;
 }
 
