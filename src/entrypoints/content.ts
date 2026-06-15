@@ -37,6 +37,36 @@ export default defineContentScript({
 
     const masked = (n: number) => `Masked ${n} value${n === 1 ? '' : 's'}`;
 
+    const nextFrame = () =>
+      new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+    /**
+     * Write the masked text and wait until the composer actually reflects it
+     * before the caller triggers Send. Sites like ChatGPT keep their own editor
+     * model (ProseMirror) that commits our DOM write asynchronously; sending in
+     * the same tick races that commit and submits the original, unmasked text.
+     * Returns false if the editor never picked up the change within the budget,
+     * so callers can refuse to send rather than leak the original.
+     */
+    const applyMaskedText = async (
+      handle: ComposerHandle,
+      text: string,
+      mappings: readonly MappingEntry[],
+    ): Promise<boolean> => {
+      adapter.writeText(handle, text);
+      const committed = () => {
+        const current = adapter.readText(handle);
+        return mappings.every((m) => current.includes(m.placeholder));
+      };
+      // Always yield at least one frame so the write commits off the current
+      // task, then keep polling for a short budget (~250ms).
+      for (let i = 0; i < 15; i++) {
+        await nextFrame();
+        if (committed()) return true;
+      }
+      return committed();
+    };
+
     const wire = (composer: ComposerHandle): (() => void) =>
       adapter.onSubmitAttempt(composer, async (ctx): Promise<SubmitDecision> => {
         const settings = await store.getSettings();
@@ -47,19 +77,28 @@ export default defineContentScript({
           case 'allow':
             return { action: 'allow' };
 
-          case 'auto-mask':
-            adapter.writeText(ctx.composer, outcome.masked);
+          case 'auto-mask': {
+            const ok = await applyMaskedText(ctx.composer, outcome.masked, outcome.mappings);
+            if (!ok) {
+              overlay.toast('Masking failed — message not sent');
+              return { action: 'block' };
+            }
             saveMappings(outcome.mappings, ttl);
             overlay.toast(masked(outcome.findings.length), { label: 'Restore', onClick: restore });
             return { action: 'allow' };
+          }
 
           case 'review':
             overlay.showReview({
               findings: outcome.findings,
               masked: outcome.masked,
               canSendAnyway: outcome.canSendAnyway,
-              onMaskSend: () => {
-                adapter.writeText(ctx.composer, outcome.masked);
+              onMaskSend: async () => {
+                const ok = await applyMaskedText(ctx.composer, outcome.masked, outcome.mappings);
+                if (!ok) {
+                  overlay.toast('Masking failed — message not sent');
+                  return;
+                }
                 saveMappings(outcome.mappings, ttl);
                 overlay.hideReview();
                 overlay.toast(masked(outcome.findings.length), {

@@ -116,7 +116,11 @@ cookieless). The payload is only an app ID, a locally-hashed random id, and the
 fixed event `app.alive` — never prompt content, findings, or which AI site you
 use. The id is a random UUID stored on-device and SHA-256 hashed before it
 leaves; TelemetryDeck hashes it again server-side. Counting is off entirely until
-an app ID is configured in `src/core/telemetry/config.ts`.
+a public TelemetryDeck app ID is supplied at build time:
+
+```bash
+WXT_TELEMETRY_APP_ID=AAAA-BBBB-CCCC npm run build   # .env or a CI secret also work
+```
 
 ## Security
 
