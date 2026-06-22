@@ -1,4 +1,4 @@
-import { byContentEditableNear, byRole, bySelector } from '../../selectors';
+import { byButtonNear, byContentEditableNear, byRole, bySelector } from '../../selectors';
 import { createAdapter } from '../shared/create-adapter';
 
 /**
@@ -16,6 +16,8 @@ export const claudeAdapter = createAdapter({
     bySelector('div[contenteditable="true"], textarea'),
   ],
   submitButton: [
+    byButtonNear('div[contenteditable="true"].ProseMirror', 'button[aria-label*="Send" i]'),
+    byButtonNear('[role="textbox"]', 'button[aria-label*="Send" i]'),
     bySelector('button[aria-label*="Send" i]'),
     bySelector('button[type="submit"]'),
     bySelector('fieldset button:last-of-type'),

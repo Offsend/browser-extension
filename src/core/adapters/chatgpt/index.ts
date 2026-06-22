@@ -1,4 +1,4 @@
-import { byContentEditableNear, byRole, bySelector } from '../../selectors';
+import { byButtonNear, byContentEditableNear, byRole, bySelector } from '../../selectors';
 import { createAdapter } from '../shared/create-adapter';
 
 /**
@@ -17,6 +17,8 @@ export const chatgptAdapter = createAdapter({
     bySelector('textarea, div[contenteditable="true"]'),
   ],
   submitButton: [
+    byButtonNear('#prompt-textarea', '[data-testid="send-button"]'),
+    byButtonNear('[role="textbox"]', '[data-testid="send-button"]'),
     bySelector('[data-testid="send-button"]'),
     bySelector('button[aria-label*="Send" i]'),
     bySelector('form button[type="submit"]'),

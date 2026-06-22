@@ -1,6 +1,6 @@
 {
   "name": "offsend-extension",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Offsend browser extension — local detection & masking of sensitive data before it reaches web AI interfaces.",
   "private": true,
   "type": "module",

@@ -19,6 +19,17 @@ const TARGETS = [
       'textarea',
     ],
   },
+  {
+    name: 'Gemini',
+    url: 'https://gemini.google.com/',
+    composerCandidates: [
+      '[role="textbox"][contenteditable="true"]',
+      '.ql-editor.textarea.new-input-ui',
+      'rich-textarea [contenteditable="true"]',
+      'div.ql-editor[contenteditable="true"]',
+      'textarea',
+    ],
+  },
 ] as const;
 
 for (const target of TARGETS) {

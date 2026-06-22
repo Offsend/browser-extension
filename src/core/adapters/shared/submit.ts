@@ -28,16 +28,27 @@ export function interceptSubmit(cfg: SubmitInterceptionConfig): Unsubscribe {
   const doc = cfg.composer.ownerDocument;
   let reentrant = false;
 
-  function programmaticSubmit(): void {
+  function resubmitEnter(): void {
+    cfg.composer.focus();
+    cfg.composer.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    );
+  }
+
+  function programmaticSubmit(trigger: SubmitTrigger = 'button'): void {
     reentrant = true;
     try {
+      // Enter submits are handled inside the composer (ProseMirror / contenteditable).
+      // Re-clicking Send shifts focus to unrelated toolbar controls on some sites.
+      if (trigger === 'enter') {
+        resubmitEnter();
+        return;
+      }
       const btn = cfg.getSubmitButton();
       if (btn) {
         btn.click();
       } else {
-        cfg.composer.dispatchEvent(
-          new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
-        );
+        resubmitEnter();
       }
     } finally {
       // Release after the current task so the re-triggered event passes through.
@@ -52,7 +63,7 @@ export function interceptSubmit(cfg: SubmitInterceptionConfig): Unsubscribe {
     event.preventDefault();
     event.stopImmediatePropagation();
     const decision = await cfg.onAttempt({ trigger, event });
-    if (decision.action === 'allow') programmaticSubmit();
+    if (decision.action === 'allow') programmaticSubmit(trigger);
   }
 
   const onKeydown = (e: Event): void => {

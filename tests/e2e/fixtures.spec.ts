@@ -47,3 +47,28 @@ test('Claude fixture: warns, masks, and sends', async () => {
     await context.close();
   }
 });
+
+test('Gemini fixture: warns, masks, and sends', async () => {
+  const context = await launchExtensionContext();
+  try {
+    const page = await newFixturePage(
+      context,
+      'https://gemini.google.com/app/offsend-fixture',
+      'gemini.html',
+    );
+    await expect(offsendHost(page)).toBeAttached();
+
+    await page.getByRole('textbox', { name: /enter a prompt here/i }).fill('email alice@example.com');
+    await page.getByRole('button', { name: /send message/i }).click();
+
+    await expect(page.getByRole('dialog', { name: /offsend review/i })).toContainText(
+      '1 sensitive value found',
+    );
+
+    await page.getByRole('button', { name: /mask & send/i }).click();
+    await expect(page.locator('[data-role="user"]')).toHaveText(/^email \{\{EMAIL_1_[a-z0-9]+\}\}$/);
+    await expect(page.locator('[data-role="assistant"]')).toContainText(/\{\{EMAIL_1_[a-z0-9]+\}\}/);
+  } finally {
+    await context.close();
+  }
+});

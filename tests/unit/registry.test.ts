@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveAdapter } from '@/core/adapters';
+import { ADAPTERS, resolveAdapter } from '@/core/adapters';
 import type { SiteAdapter } from '@/core/adapters';
 
 const fake = (id: string, matches: string[]): SiteAdapter => ({
@@ -29,5 +29,11 @@ describe('resolveAdapter', () => {
   it('returns null for unsupported hosts and bad urls', () => {
     expect(resolveAdapter('https://example.com/', adapters)).toBeNull();
     expect(resolveAdapter('not a url', adapters)).toBeNull();
+  });
+});
+
+describe('ADAPTERS registry', () => {
+  it('includes gemini.google.com', () => {
+    expect(resolveAdapter('https://gemini.google.com/app', ADAPTERS)?.id).toBe('gemini');
   });
 });

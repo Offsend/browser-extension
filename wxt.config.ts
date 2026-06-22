@@ -11,14 +11,22 @@ export default defineConfig({
     description:
       'Detect and mask sensitive data locally before it reaches web AI interfaces. Content never leaves your device.',
     // Minimal host permissions: only the AI domains we actively support.
-    host_permissions: ['https://chatgpt.com/*', 'https://claude.ai/*'],
+    host_permissions: [
+      'https://chatgpt.com/*',
+      'https://claude.ai/*',
+      'https://gemini.google.com/*',
+    ],
     permissions: ['storage'],
     // The on-page overlay renders the extension icon, so it must be readable
     // from the supported host pages.
     web_accessible_resources: [
       {
         resources: ['icons/*.png'],
-        matches: ['https://chatgpt.com/*', 'https://claude.ai/*'],
+        matches: [
+          'https://chatgpt.com/*',
+          'https://claude.ai/*',
+          'https://gemini.google.com/*',
+        ],
       },
     ],
   },

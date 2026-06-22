@@ -26,6 +26,26 @@ export function createAdapter(cfg: AdapterConfig): SiteAdapter {
     ? createCascadeResolver(cfg.conversationRoot)
     : null;
 
+  /**
+   * Resolve the Send control, scoping the search to the composer's input
+   * wrapper before falling back to the whole document. This avoids matching
+   * page-level decoys and follows the composer across SPA re-renders.
+   */
+  const resolveSubmitButton = (composerEl: HTMLElement): HTMLElement | null => {
+    const roots: ParentNode[] = [];
+    for (const sel of ['.text-input-field', 'form']) {
+      const scope = composerEl.closest(sel);
+      if (scope) roots.push(scope);
+    }
+    if (composerEl.parentElement) roots.push(composerEl.parentElement);
+    roots.push(composerEl.ownerDocument);
+    for (const root of roots) {
+      const btn = submitResolver.resolve(root);
+      if (btn) return btn;
+    }
+    return null;
+  };
+
   return {
     id: cfg.id,
     matches: cfg.matches,
@@ -39,7 +59,7 @@ export function createAdapter(cfg: AdapterConfig): SiteAdapter {
     onSubmitAttempt(composer, handler) {
       return interceptSubmit({
         composer: composer.element,
-        getSubmitButton: () => submitResolver.resolve(composer.element.ownerDocument),
+        getSubmitButton: () => resolveSubmitButton(composer.element),
         onAttempt: async ({ trigger, event }) => {
           const ctx: SubmitContext = {
             composer,
@@ -61,10 +81,15 @@ export function createAdapter(cfg: AdapterConfig): SiteAdapter {
       : undefined,
 
     healthCheck(root) {
-      if (!composerResolver.resolve(root)) {
+      const composerEl = composerResolver.resolve(root);
+      if (!composerEl) {
         return { status: 'degraded', reason: 'Prompt input not found' };
       }
-      if (!submitResolver.resolve(root)) {
+      // Some sites (e.g. Gemini) only render the Send control once the composer
+      // has text — an empty composer with no Send button is healthy, not broken.
+      // We still flag a genuinely missing Send button when text is present.
+      const hasText = readComposerText(composerEl).trim().length > 0;
+      if (hasText && !resolveSubmitButton(composerEl)) {
         return { status: 'degraded', reason: 'Send button not found' };
       }
       return { status: 'ok' };

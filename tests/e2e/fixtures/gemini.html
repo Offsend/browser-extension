@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Gemini fixture</title>
+  </head>
+  <body>
+    <main>
+      <section id="conversation" aria-label="Conversation"></section>
+      <form class="text-input-field input-area">
+        <rich-textarea>
+          <div
+            class="ql-editor textarea new-input-ui"
+            role="textbox"
+            contenteditable="true"
+            aria-label="Enter a prompt here"
+          ></div>
+        </rich-textarea>
+        <button type="button" class="mdc-icon-button" aria-label="Send message">
+          <mat-icon data-mat-icon-name="arrow_upward" fonticon="arrow_upward"></mat-icon>
+        </button>
+      </form>
+    </main>
+    <script>
+      const composer = document.querySelector('.ql-editor');
+      const send = document.querySelector('button[aria-label="Send message"]');
+      const conversation = document.querySelector('#conversation');
+
+      function submit() {
+        const text = composer.innerText;
+        const user = document.createElement('p');
+        user.dataset.role = 'user';
+        user.textContent = text;
+        conversation.append(user);
+
+        const assistant = document.createElement('p');
+        assistant.dataset.role = 'assistant';
+        assistant.textContent = `Gemini saw: ${text}`;
+        conversation.append(assistant);
+      }
+
+      send.addEventListener('click', submit);
+      composer.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) submit();
+      });
+    </script>
+  </body>
+</html>

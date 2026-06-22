@@ -81,7 +81,7 @@ export async function setExtensionPolicyMode(
 export async function newFixturePage(
   context: BrowserContext,
   url: string,
-  fixtureName: 'chatgpt.html' | 'claude.html',
+  fixtureName: 'chatgpt.html' | 'claude.html' | 'gemini.html',
 ): Promise<Page> {
   const page = await context.newPage();
   const fixture = await readFile(path.join(ROOT, 'tests/e2e/fixtures', fixtureName), 'utf8');

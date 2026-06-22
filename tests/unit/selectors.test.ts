@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   byRole,
+  byButtonNear,
+  byControlNear,
   byContentEditableNear,
   bySelector,
+  bySelectorAny,
   byTestId,
   createCascadeResolver,
 } from '@/core/selectors';
@@ -30,6 +33,40 @@ describe('selector strategies', () => {
       '<form><div contenteditable="true" id="in"></div><button type="submit">Send</button></form>',
     );
     expect(byContentEditableNear('button[type=submit]')(document)?.id).toBe('in');
+  });
+
+  it('byButtonNear finds the send control next to the composer', () => {
+    setBody(
+      '<main><button data-testid="send-button" id="decoy">Decoy</button><form><div id="prompt-textarea"></div><button data-testid="send-button" id="real">Send</button></form></main>',
+    );
+    expect(byButtonNear('#prompt-textarea', '[data-testid="send-button"]')(document)?.id).toBe(
+      'real',
+    );
+  });
+
+  it('byButtonNear prefers the nearest Send control when decoys share the page', () => {
+    setBody(
+      '<main><button aria-label="Send feedback" id="decoy">Feedback</button><div id="wrap"><div class="ProseMirror" contenteditable="true"></div><button aria-label="Send Message" id="real">Send</button></div></main>',
+    );
+    expect(
+      byButtonNear('.ProseMirror', 'button[aria-label*="Send" i]')(document)?.id,
+    ).toBe('real');
+  });
+
+  it('byControlNear finds mat-icon send buttons scoped to the input wrapper', () => {
+    setBody(
+      '<main><button id="decoy"><mat-icon data-mat-icon-name="send"></mat-icon></button><form class="text-input-field"><div class="ql-editor" contenteditable="true"></div><button id="real"><mat-icon data-mat-icon-name="send"></mat-icon></button></form></main>',
+    );
+    expect(
+      byControlNear('.ql-editor', ['[data-mat-icon-name="send"]'])(document)?.id,
+    ).toBe('real');
+  });
+
+  it('bySelectorAny matches hidden send controls', () => {
+    setBody(
+      '<button hidden id="send"><mat-icon data-mat-icon-name="send"></mat-icon></button>',
+    );
+    expect(bySelectorAny('[data-mat-icon-name="send"]')(document)?.id).toBe('send');
   });
 
   it('bySelector is a coarse fallback', () => {

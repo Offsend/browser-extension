@@ -12,7 +12,11 @@ import { mountOverlay } from '@/ui/overlay';
  * Shadow-DOM overlay: detect → (warn / auto-mask / block) → mask + Restore.
  */
 export default defineContentScript({
-  matches: ['https://chatgpt.com/*', 'https://claude.ai/*'],
+  matches: [
+    'https://chatgpt.com/*',
+    'https://claude.ai/*',
+    'https://gemini.google.com/*',
+  ],
   async main() {
     const adapter = resolveAdapter(location.href);
     if (!adapter) return;
