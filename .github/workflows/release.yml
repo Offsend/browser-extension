@@ -34,6 +34,8 @@ jobs:
           name: chrome-extension
           path: .output/*-chrome.zip
           if-no-files-found: error
+          # .output is a dotfile dir; upload-artifact@v4 skips hidden paths by default.
+          include-hidden-files: true
 
       - name: Submit to Chrome Web Store
         run: npx wxt submit ${{ inputs.dry_run && '--dry-run' || '' }} --chrome-zip .output/*-chrome.zip
