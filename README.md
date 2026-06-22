@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/offsend/browser-extension/actions/workflows/ci.yml/badge.svg)](https://github.com/offsend/browser-extension/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-v0.0.2-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/offsend/kaaoodakdpdbdjcbhdbcodfjpfaiaaig)
 
 **Get it AI-ready before you hit send — right inside ChatGPT and Claude.**
 
@@ -20,12 +21,14 @@ Changed your mind? One-click **Restore** brings the originals back.
 No cloud account · No server-side scanning · No "trust us"
 ```
 
-## 🚧 Coming soon
+## Install
 
-The browser extension is **in active development** and will ship to the Chrome Web
-Store shortly, with Firefox and Edge to follow. It complements the
-[Offsend macOS app & CLI](https://offsend.io/) — same local-first promise, same
-detectors, now in your AI chats. Star the repo to follow along.
+**[Add Offsend to Chrome](https://chromewebstore.google.com/detail/offsend/kaaoodakdpdbdjcbhdbcodfjpfaiaaig)** — available on the
+[Chrome Web Store](https://chromewebstore.google.com/detail/offsend/kaaoodakdpdbdjcbhdbcodfjpfaiaaig).
+Firefox and Edge builds are on the way.
+
+Part of the [Offsend macOS app & CLI](https://offsend.io/) — same local-first
+promise, same detectors, now in your AI chats.
 
 ## Why you'll want it
 
