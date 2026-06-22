@@ -1,0 +1,43 @@
+version: 1
+
+check:
+  fail_on: block
+  policy: false
+  exclude:
+    - "*.lock"
+    - "vendor/**"
+    - "DerivedData/**"
+  detectors:
+    # All detector IDs you can list under `disable:`:
+    #   email, phone, money, url, ipAddress, internalDomain, contractId,
+    #   invoiceId, orderId, apiKeyGeneric, openAIAPIKey, awsAccessKeyId,
+    #   githubToken, slackToken, stripeKey, jwt, privateKey, sshPrivateKey,
+    #   databaseURLWithPassword, bearerToken, highEntropyString, creditCardLike,
+    #   iban, customClient, customCompany, customProject, customSensitiveTerm,
+    #   customInternalDomain, personName, streetAddress, governmentId
+    # Default keeps only secret/credential detectors active.
+    disable:
+      - email
+      - phone
+      - money
+      - url
+      - ipAddress
+      - internalDomain
+      - contractId
+      - invoiceId
+      - orderId
+      - creditCardLike
+      - iban
+      - personName
+      - streetAddress
+      - governmentId
+  # Custom dictionaries are matched in addition to the built-in detectors.
+  # kind: client | company | project | sensitiveTerm | internalDomain | regex
+  # For every kind except `regex`, `value` is matched literally (with word boundaries).
+  # For `regex`, `value` is used as a regular expression pattern verbatim.
+  dictionaries: []
+
+hooks:
+  type: pre-commit
+  fail_on: block
+  policy: false
