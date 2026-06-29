@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FindingType } from '@/core/detection';
 import {
   DEFAULT_SETTINGS,
@@ -11,7 +11,6 @@ import {
   Badge,
   Button,
   Group,
-  ICheck,
   Row,
   TextArea,
   TextInput,
@@ -19,6 +18,7 @@ import {
   useTheme,
   type Theme,
 } from '@/ui';
+import { CustomRulesEditor } from './CustomRulesEditor';
 
 const TYPE_LABEL: Record<FindingType, string> = {
   email: 'Email addresses',
@@ -29,6 +29,7 @@ const TYPE_LABEL: Record<FindingType, string> = {
   credit_card: 'Credit cards',
   ip_address: 'IP addresses',
   uuid: 'UUIDs',
+  custom: 'Custom rules',
 };
 
 const ALL_TYPES: readonly FindingType[] = [
@@ -40,6 +41,7 @@ const ALL_TYPES: readonly FindingType[] = [
   'credit_card',
   'ip_address',
   'uuid',
+  'custom',
 ];
 
 const MODES: readonly { value: PolicyMode; label: string; hint: string }[] = [
@@ -72,11 +74,18 @@ export function App() {
     [],
   );
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     void store.getSettings().then(setSettings);
   }, [store]);
+
+  const persist = useCallback(
+    async (next: Settings) => {
+      setSettings(next);
+      await store.saveSettings(next);
+    },
+    [store],
+  );
 
   if (!settings) {
     return (
@@ -99,24 +108,26 @@ export function App() {
   const enabled = settings.policy.enabledTypes;
   const isTypeOn = (ty: FindingType) => enabled === null || enabled.includes(ty);
 
-  const update = (next: Settings) => {
-    setSettings(next);
-    setSaved(false);
-  };
-
   const setPolicy = (patch: Partial<Settings['policy']>) =>
-    update({ ...settings, policy: { ...settings.policy, ...patch } });
+    void persist({ ...settings, policy: { ...settings.policy, ...patch } });
 
   const toggleType = (ty: FindingType) => {
     const current = enabled === null ? [...ALL_TYPES] : [...enabled];
     const nextList = isTypeOn(ty) ? current.filter((x) => x !== ty) : [...current, ty];
-    setPolicy({ enabledTypes: nextList.length === ALL_TYPES.length ? null : nextList });
+    void persist({
+      ...settings,
+      policy: {
+        ...settings.policy,
+        enabledTypes: nextList.length === ALL_TYPES.length ? null : nextList,
+      },
+    });
   };
 
-  const save = async () => {
-    await store.saveSettings(settings);
-    setSaved(true);
-  };
+  const reset = () =>
+    void persist({
+      ...DEFAULT_SETTINGS,
+      customRules: settings.customRules,
+    });
 
   return (
     <div style={{ minHeight: '100vh', background: t.bg0, color: t.text }}>
@@ -196,6 +207,18 @@ export function App() {
           ))}
         </Group>
 
+        <Group
+          t={t}
+          title="Custom rules"
+          hint="JavaScript regex patterns matched in addition to built-in detectors. Toggle “Custom rules” under Detectors to enable or disable them."
+        >
+          <CustomRulesEditor
+            t={t}
+            rules={settings.customRules}
+            onRulesChange={(customRules) => void persist({ ...settings, customRules: [...customRules] })}
+          />
+        </Group>
+
         <Group t={t} title="Masking">
           <Row
             t={t}
@@ -209,7 +232,10 @@ export function App() {
               width={92}
               value={settings.mappingTtlMinutes}
               onChange={(v) =>
-                update({ ...settings, mappingTtlMinutes: Math.max(1, Number(v) || 1) })
+                void persist({
+                  ...settings,
+                  mappingTtlMinutes: Math.max(1, Number(v) || 1),
+                })
               }
             />
             <span style={{ fontSize: 12, color: t.textSub }}>min</span>
@@ -230,7 +256,7 @@ export function App() {
               t={t}
               on={settings.telemetryEnabled}
               onChange={() =>
-                update({ ...settings, telemetryEnabled: !settings.telemetryEnabled })
+                void persist({ ...settings, telemetryEnabled: !settings.telemetryEnabled })
               }
             />
           </Row>
@@ -260,27 +286,9 @@ export function App() {
           </div>
         </Group>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
-          <Button t={t} variant="outline" onClick={() => update(DEFAULT_SETTINGS)}>
+        <div style={{ marginTop: 8 }}>
+          <Button t={t} variant="outline" onClick={reset}>
             Reset to defaults
-          </Button>
-          <div style={{ flex: 1 }} />
-          {saved && (
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                fontSize: 12.5,
-                color: t.greenText,
-              }}
-            >
-              <ICheck size={12} color={t.green} />
-              Saved
-            </span>
-          )}
-          <Button t={t} variant="primary" onClick={save}>
-            Save changes
           </Button>
         </div>
       </main>

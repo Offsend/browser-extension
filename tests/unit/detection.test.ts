@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TsEngine } from '@/core/detection';
+import { createEngine } from '@/core/storage';
 
 const engine = new TsEngine();
 
@@ -36,6 +37,20 @@ describe('TsEngine', () => {
     const findings = await engine.scan('a@b.com +1 415 555 1234', { types: ['email'] });
     expect(findings).toHaveLength(1);
     expect(findings[0]!.type).toBe('email');
+  });
+
+  it('detects custom rules when wired through createEngine', async () => {
+    const customEngine = createEngine([
+      {
+        id: 'proj',
+        name: 'Project id',
+        pattern: String.raw`\bPRJ-\d{3}\b`,
+        enabled: true,
+      },
+    ]);
+    const findings = await customEngine.scan('use PRJ-007 here', { types: ['custom'] });
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.type).toBe('custom');
   });
 
   it('produces non-overlapping findings sorted by position', async () => {

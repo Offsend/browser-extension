@@ -13,7 +13,8 @@ export type FindingType =
   | 'private_key'
   | 'credit_card'
   | 'ip_address'
-  | 'uuid';
+  | 'uuid'
+  | 'custom';
 
 /** A single detected sensitive value within the scanned text. */
 export interface Finding {

@@ -11,6 +11,7 @@ interface ButtonProps {
   sm?: boolean;
   icon?: ReactNode;
   fullWidth?: boolean;
+  disabled?: boolean;
   onClick?: () => void;
 }
 
@@ -22,6 +23,7 @@ export function Button({
   sm = false,
   icon,
   fullWidth = false,
+  disabled = false,
   onClick,
 }: ButtonProps) {
   const [hov, setHov] = useState(false);
@@ -54,7 +56,8 @@ export function Button({
   return (
     <button
       onClick={onClick}
-      onMouseEnter={() => setHov(true)}
+      disabled={disabled}
+      onMouseEnter={() => !disabled && setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
         display: fullWidth ? 'flex' : 'inline-flex',
@@ -70,9 +73,10 @@ export function Button({
         fontSize: sm ? 11 : 12,
         fontWeight: 500,
         fontFamily: FONT_SANS,
-        cursor: 'pointer',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.55 : 1,
         whiteSpace: 'nowrap',
-        transition: 'background 0.12s',
+        transition: 'background 0.12s, opacity 0.12s',
       }}
     >
       {icon}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { HealthReply } from '@/core/messaging/protocol';
 import { SettingsStore, createBrowserBackend, type PolicyMode } from '@/core/storage';
-import { Badge, Brand, Button, IGear, useTheme, type Theme } from '@/ui';
+import { Badge, Brand, Button, IGear, Toggle, useTheme, type Theme } from '@/ui';
 
 function hostOf(url: string | null): string | null {
   if (!url) return null;
@@ -69,9 +69,13 @@ export function App() {
   const [host, setHost] = useState<string | null>(null);
   const [health, setHealth] = useState<HealthReply | null>(null);
   const [mode, setMode] = useState<PolicyMode | null>(null);
+  const [enabled, setEnabled] = useState(true);
 
   useEffect(() => {
-    (async () => {
+    const backend = createBrowserBackend(browser.storage.local);
+    const store = new SettingsStore(backend);
+
+    const load = async () => {
       const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
       setHost(hostOf(tab?.url ?? null));
       if (tab?.id !== undefined) {
@@ -81,10 +85,41 @@ export function App() {
         })) as HealthReply | undefined;
         setHealth(reply ?? { adapterId: null, status: 'inactive' });
       }
-      const store = new SettingsStore(createBrowserBackend(browser.storage.local));
-      setMode((await store.getSettings()).policy.mode);
-    })();
+      const settings = await store.getSettings();
+      setMode(settings.policy.mode);
+      setEnabled(settings.enabled);
+    };
+
+    void load();
+
+    const onChanged = (
+      changes: Record<string, browser.storage.StorageChange>,
+      area: string,
+    ) => {
+      if (area !== 'local' || !changes['offsend:state']) return;
+      const next = changes['offsend:state'].newValue as { settings?: { enabled?: boolean } } | undefined;
+      if (typeof next?.settings?.enabled === 'boolean') setEnabled(next.settings.enabled);
+    };
+    browser.storage.onChanged.addListener(onChanged);
+    return () => browser.storage.onChanged.removeListener(onChanged);
   }, []);
+
+  const toggleEnabled = async () => {
+    const store = new SettingsStore(createBrowserBackend(browser.storage.local));
+    const settings = await store.getSettings();
+    const next = !settings.enabled;
+    await store.saveSettings({ ...settings, enabled: next });
+    setEnabled(next);
+
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    if (tab?.id !== undefined) {
+      window.setTimeout(() => {
+        void browser.runtime
+          .sendMessage({ type: 'get-health', tabId: tab.id! })
+          .then((reply) => setHealth((reply as HealthReply | undefined) ?? { adapterId: null, status: 'inactive' }));
+      }, 50);
+    }
+  };
 
   return (
     <main
@@ -98,6 +133,12 @@ export function App() {
     >
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Brand t={t} subtitle="Local-only" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 11, color: t.textSub, userSelect: 'none' }}>
+            {enabled ? 'On' : 'Off'}
+          </span>
+          <Toggle t={t} size="sm" on={enabled} onChange={() => void toggleEnabled()} />
+        </div>
       </header>
 
       <div
@@ -114,7 +155,13 @@ export function App() {
         </InfoRow>
         <div style={{ height: 1, background: t.border }} />
         <InfoRow t={t} label="Adapter">
-          <StatusBadge t={t} health={health} />
+          {!enabled ? (
+            <Badge t={t} tone="neutral">
+              paused
+            </Badge>
+          ) : (
+            <StatusBadge t={t} health={health} />
+          )}
         </InfoRow>
         <div style={{ height: 1, background: t.border }} />
         <InfoRow t={t} label="Mode">

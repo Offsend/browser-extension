@@ -7,9 +7,9 @@ export default defineConfig({
   // PNG or SVG) into 16/32/48/128 and wired into the manifest automatically.
   modules: ['@wxt-dev/module-react', '@wxt-dev/auto-icons'],
   manifest: {
-    name: 'Offsend',
+    name: 'Offsend — Mask Secrets Before Sending to AI',
     description:
-      'Detect and mask sensitive data locally before it reaches web AI interfaces. Content never leaves your device.',
+      'Detect and mask API keys, tokens, private keys, emails, and personal data locally before sending prompts to ChatGPT, Claude, or Gemini.',
     // Minimal host permissions: only the AI domains we actively support.
     host_permissions: [
       'https://chatgpt.com/*',

@@ -8,7 +8,7 @@ export type OffsendMessage =
   | {
       readonly type: 'report-health';
       readonly adapterId: string | null;
-      readonly status: AdapterHealthStatus | 'connecting';
+      readonly status: AdapterHealthStatus | 'connecting' | 'inactive';
       readonly reason?: string;
     }
   | { readonly type: 'get-health'; readonly tabId: number };

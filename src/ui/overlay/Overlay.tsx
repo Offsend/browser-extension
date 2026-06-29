@@ -30,6 +30,7 @@ const TYPE_LABEL: Record<FindingType, string> = {
   credit_card: 'card',
   ip_address: 'IP',
   uuid: 'UUID',
+  custom: 'custom',
 };
 
 function countByType(findings: readonly Finding[]): Array<[FindingType, number]> {

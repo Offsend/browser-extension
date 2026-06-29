@@ -6,8 +6,24 @@ import { DEFAULT_STATE, SCHEMA_VERSION, type StoredState } from './schema';
  */
 export type Migration = (data: Record<string, unknown>) => Record<string, unknown>;
 
-// No upgrades yet — version 1 is the first schema. Future entries go here, in order.
-export const MIGRATIONS: readonly Migration[] = [];
+const upgradeToV4: Migration = (data) => {
+  const settings =
+    typeof data.settings === 'object' && data.settings !== null
+      ? { ...(data.settings as Record<string, unknown>) }
+      : {};
+  if (!Array.isArray(settings.customRules)) {
+    settings.customRules = [];
+  }
+  return { ...data, settings };
+};
+
+/** Index `n` upgrades persisted data from version `n` to `n + 1`. */
+export const MIGRATIONS: readonly Migration[] = [
+  (data) => data,
+  (data) => data,
+  (data) => data,
+  upgradeToV4,
+];
 
 /**
  * Bring arbitrary persisted data up to the current schema. Unknown/corrupt

@@ -1,10 +1,10 @@
 import { resolveAdapter, type ComposerHandle, type SubmitDecision } from '@/core/adapters';
-import { TsEngine } from '@/core/detection';
+import type { DetectionEngine } from '@/core/detection';
 import { intercept } from '@/core/interceptor';
 import type { MappingEntry } from '@/core/masking';
 import type { MappingsReply, OffsendMessage } from '@/core/messaging/protocol';
 import { restoreInDom } from '@/core/restore';
-import { SettingsStore, createBrowserBackend } from '@/core/storage';
+import { SettingsStore, createBrowserBackend, createEngine } from '@/core/storage';
 import { mountOverlay } from '@/ui/overlay';
 
 /**
@@ -21,10 +21,10 @@ export default defineContentScript({
     const adapter = resolveAdapter(location.href);
     if (!adapter) return;
 
-    const engine = new TsEngine();
     const overlay = mountOverlay();
     const store = new SettingsStore(createBrowserBackend(browser.storage.local));
     const host = location.hostname;
+    let engine: DetectionEngine = createEngine([]);
 
     const send = (message: OffsendMessage) => browser.runtime.sendMessage(message);
 
@@ -71,9 +71,12 @@ export default defineContentScript({
       return committed();
     };
 
+    let enabled = true;
+
     const wire = (composer: ComposerHandle): (() => void) =>
       adapter.onSubmitAttempt(composer, async (ctx): Promise<SubmitDecision> => {
         const settings = await store.getSettings();
+        if (!settings.enabled) return { action: 'allow' };
         const outcome = await intercept(ctx.text, host, settings.policy, engine);
         const ttl = settings.mappingTtlMinutes;
 
@@ -121,10 +124,24 @@ export default defineContentScript({
         }
       });
 
-    let composer = adapter.findComposer(document);
-    let unsubscribe: (() => void) | null = composer ? wire(composer) : null;
+    let composer: ComposerHandle | null = null;
+    let unsubscribe: (() => void) | null = null;
+
+    const unwire = () => {
+      unsubscribe?.();
+      unsubscribe = null;
+    };
 
     const reportHealth = () => {
+      if (!enabled) {
+        void send({
+          type: 'report-health',
+          adapterId: adapter.id,
+          status: 'inactive',
+          reason: 'Protection paused',
+        });
+        return;
+      }
       // No live composer wired yet → the adapter matched but isn't protecting,
       // so the toolbar badge shows "preparing" (amber) until we're ready.
       if (!composer || !unsubscribe) {
@@ -139,23 +156,59 @@ export default defineContentScript({
         reason: health.reason,
       });
     };
+
+    const bindComposer = (found: ComposerHandle | null) => {
+      if (found && found.element !== composer?.element) {
+        unwire();
+        composer = found;
+        unsubscribe = wire(found);
+      } else if (found && !unsubscribe) {
+        composer = found;
+        unsubscribe = wire(found);
+      } else if (!found) {
+        unwire();
+        composer = null;
+      }
+    };
+
+    const applyEnabled = async (next: boolean) => {
+      if (enabled === next) return;
+      enabled = next;
+      if (!enabled) {
+        unwire();
+        overlay.hideReview();
+        reportHealth();
+        return;
+      }
+      bindComposer(adapter.findComposer(document));
+      reportHealth();
+    };
+
+    const syncFromStorage = async () => {
+      const settings = await store.getSettings();
+      engine = createEngine(settings.customRules);
+      await applyEnabled(settings.enabled);
+    };
+
+    await syncFromStorage();
+    if (enabled) bindComposer(adapter.findComposer(document));
     reportHealth();
+
+    browser.storage.onChanged.addListener((changes, area) => {
+      if (area === 'local' && changes['offsend:state']) void syncFromStorage();
+    });
 
     // Re-bind when the site swaps the composer (SPA navigation / re-render),
     // and keep health fresh so degraded state is never silent.
     const interval = setInterval(() => {
-      const found = adapter.findComposer(document);
-      if (found && found.element !== composer?.element) {
-        unsubscribe?.();
-        composer = found;
-        unsubscribe = wire(found);
-      }
+      if (!enabled) return;
+      bindComposer(adapter.findComposer(document));
       reportHealth();
     }, 3000);
 
     window.addEventListener('pagehide', () => {
       clearInterval(interval);
-      unsubscribe?.();
+      unwire();
       overlay.destroy();
     });
   },
