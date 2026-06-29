@@ -93,7 +93,7 @@ export function App() {
     void load();
 
     const onChanged = (
-      changes: Record<string, browser.storage.StorageChange>,
+      changes: Record<string, Browser.storage.StorageChange>,
       area: string,
     ) => {
       if (area !== 'local' || !changes['offsend:state']) return;
