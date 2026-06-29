@@ -9,7 +9,7 @@ export default defineConfig({
   manifest: {
     name: 'Offsend — Mask Secrets Before Sending to AI',
     description:
-      'Detect and mask API keys, tokens, private keys, emails, and personal data locally before sending prompts to ChatGPT, Claude, or Gemini.',
+      'Detect and mask API keys, tokens, private keys, emails, and personal data locally before sending to ChatGPT, Claude, or Gemini.',
     // Minimal host permissions: only the AI domains we actively support.
     host_permissions: [
       'https://chatgpt.com/*',
