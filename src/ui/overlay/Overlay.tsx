@@ -1,11 +1,15 @@
+import { useMemo, useState } from 'react';
 import type { Finding, FindingType } from '@/core/detection';
-import { Badge, Button, FONT_MONO, useTheme, type Theme } from '@/ui';
+import { maskText } from '@/core/masking';
+import { Badge, Button, Checkbox, FONT_MONO, useTheme, type Theme } from '@/ui';
 
 export interface ReviewState {
   readonly findings: readonly Finding[];
-  readonly masked: string;
+  /** Original, unmasked prompt text — used to preview masking as toggles change. */
+  readonly text: string;
   readonly canSendAnyway: boolean;
-  readonly onMaskSend: () => void;
+  /** Called with only the findings the user left enabled. */
+  readonly onMaskSend: (findings: readonly Finding[]) => void;
   readonly onSendAnyway: () => void;
   readonly onCancel: () => void;
 }
@@ -33,14 +37,55 @@ const TYPE_LABEL: Record<FindingType, string> = {
   custom: 'custom',
 };
 
-function countByType(findings: readonly Finding[]): Array<[FindingType, number]> {
-  const counts = new Map<FindingType, number>();
-  for (const f of findings) counts.set(f.type, (counts.get(f.type) ?? 0) + 1);
-  return [...counts.entries()];
+/** Same value+type always share one placeholder, so they're toggled as a group. */
+function findingKey(f: Finding): string {
+  return `${f.type}\u0000${f.value}`;
+}
+
+interface FindingGroup {
+  readonly key: string;
+  readonly type: FindingType;
+  readonly value: string;
+  readonly count: number;
+}
+
+function groupFindings(findings: readonly Finding[]): FindingGroup[] {
+  const groups = new Map<string, FindingGroup>();
+  for (const f of findings) {
+    const key = findingKey(f);
+    const existing = groups.get(key);
+    if (existing) groups.set(key, { ...existing, count: existing.count + 1 });
+    else groups.set(key, { key, type: f.type, value: f.value, count: 1 });
+  }
+  return [...groups.values()];
+}
+
+function truncate(value: string, max = 40): string {
+  return value.length > max ? `${value.slice(0, max)}…` : value;
 }
 
 function ReviewCard({ t, review }: { t: Theme; review: ReviewState }) {
   const total = review.findings.length;
+  const groups = useMemo(() => groupFindings(review.findings), [review.findings]);
+  const [disabledKeys, setDisabledKeys] = useState<ReadonlySet<string>>(new Set());
+  const enabledFindings = useMemo(
+    () => review.findings.filter((f) => !disabledKeys.has(findingKey(f))),
+    [review.findings, disabledKeys],
+  );
+  const preview = useMemo(
+    () => maskText(review.text, enabledFindings).masked,
+    [review.text, enabledFindings],
+  );
+
+  const toggle = (key: string) => {
+    setDisabledKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
   return (
     <div
       role="dialog"
@@ -68,13 +113,47 @@ function ReviewCard({ t, review }: { t: Theme; review: ReviewState }) {
         </span>
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-        {countByType(review.findings).map(([type, n]) => (
-          <Badge key={type} t={t} tone="warn">
-            {TYPE_LABEL[type]}
-            {n > 1 ? ` ×${n}` : ''}
-          </Badge>
-        ))}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+          marginBottom: 10,
+          maxHeight: 168,
+          overflow: 'auto',
+        }}
+      >
+        {groups.map((g) => {
+          const on = !disabledKeys.has(g.key);
+          return (
+            <div
+              key={g.key}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 2px' }}
+            >
+              <Checkbox t={t} on={on} onChange={() => toggle(g.key)} />
+              <Badge t={t} tone={on ? 'warn' : 'neutral'}>
+                {TYPE_LABEL[g.type]}
+                {g.count > 1 ? ` ×${g.count}` : ''}
+              </Badge>
+              <span
+                title={g.value}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  fontSize: 11.5,
+                  fontFamily: FONT_MONO,
+                  color: on ? t.textSub : t.textMuted,
+                  textDecoration: on ? 'none' : 'line-through',
+                }}
+              >
+                {truncate(g.value)}
+              </span>
+            </div>
+          );
+        })}
       </div>
 
       <pre
@@ -93,7 +172,7 @@ function ReviewCard({ t, review }: { t: Theme; review: ReviewState }) {
           color: t.textSub,
         }}
       >
-        {review.masked}
+        {preview}
       </pre>
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -105,7 +184,7 @@ function ReviewCard({ t, review }: { t: Theme; review: ReviewState }) {
             Send anyway
           </Button>
         )}
-        <Button t={t} variant="primary" sm onClick={review.onMaskSend}>
+        <Button t={t} variant="primary" sm onClick={() => review.onMaskSend(enabledFindings)}>
           Mask &amp; send
         </Button>
       </div>

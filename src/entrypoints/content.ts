@@ -1,7 +1,7 @@
 import { resolveAdapter, type ComposerHandle, type SubmitDecision } from '@/core/adapters';
-import type { DetectionEngine } from '@/core/detection';
+import type { DetectionEngine, Finding } from '@/core/detection';
 import { intercept } from '@/core/interceptor';
-import type { MappingEntry } from '@/core/masking';
+import { maskText, type MappingEntry } from '@/core/masking';
 import type { MappingsReply, OffsendMessage } from '@/core/messaging/protocol';
 import { restoreInDom } from '@/core/restore';
 import { SettingsStore, createBrowserBackend, createEngine } from '@/core/storage';
@@ -98,17 +98,26 @@ export default defineContentScript({
           case 'review':
             overlay.showReview({
               findings: outcome.findings,
-              masked: outcome.masked,
+              text: ctx.text,
               canSendAnyway: outcome.canSendAnyway,
-              onMaskSend: async () => {
-                const ok = await applyMaskedText(ctx.composer, outcome.masked, outcome.mappings);
+              onMaskSend: async (enabledFindings: readonly Finding[]) => {
+                if (enabledFindings.length === 0) {
+                  overlay.hideReview();
+                  adapter.submit(ctx.composer);
+                  return;
+                }
+                const { masked: finalMasked, mappings: finalMappings } = maskText(
+                  ctx.text,
+                  enabledFindings,
+                );
+                const ok = await applyMaskedText(ctx.composer, finalMasked, finalMappings);
                 if (!ok) {
                   overlay.toast('Masking failed — message not sent');
                   return;
                 }
-                saveMappings(outcome.mappings, ttl);
+                saveMappings(finalMappings, ttl);
                 overlay.hideReview();
-                overlay.toast(masked(outcome.findings.length), {
+                overlay.toast(masked(enabledFindings.length), {
                   label: 'Restore',
                   onClick: restore,
                 });
