@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "Offsend — Mask Secrets Before Sending to AI",
+    "description": "Extension name shown in the store and browser UI."
+  },
+  "extDescription": {
+    "message": "Detect and mask API keys, tokens, private keys, emails, and personal data locally before sending to ChatGPT, Claude, Gemini, DeepSeek, Perplexity, or Grok.",
+    "description": "Extension description shown in the store and browser UI."
+  }
+}

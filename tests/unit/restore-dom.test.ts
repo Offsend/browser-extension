@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { restoreInDom } from '@/core/restore/restore-dom';
+import { restoreInDom, restoreInText } from '@/core/restore/restore-dom';
 import type { MappingEntry } from '@/core/masking';
 
 const mappings: MappingEntry[] = [
@@ -36,5 +36,24 @@ describe('restoreInDom', () => {
     root.textContent = '{{EMAIL_1}}';
     expect(restoreInDom(root, [])).toBe(0);
     expect(root.textContent).toBe('{{EMAIL_1}}');
+  });
+});
+
+describe('restoreInText', () => {
+  it('replaces known placeholders and counts them', () => {
+    const { text, count } = restoreInText('to {{EMAIL_1}} key {{API_KEY_1}}', mappings);
+    expect(text).toBe('to a@b.com key sk-secret');
+    expect(count).toBe(2);
+  });
+
+  it('leaves unknown placeholders untouched', () => {
+    const { text, count } = restoreInText('{{PHONE_9}} and {{EMAIL_1}}', mappings);
+    expect(text).toBe('{{PHONE_9}} and a@b.com');
+    expect(count).toBe(1);
+  });
+
+  it('is a no-op without placeholders or mappings', () => {
+    expect(restoreInText('plain', mappings)).toEqual({ text: 'plain', count: 0 });
+    expect(restoreInText('{{EMAIL_1}}', [])).toEqual({ text: '{{EMAIL_1}}', count: 0 });
   });
 });

@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client';
+import type { Finding } from '@/core/detection';
 import { Overlay, type OverlayState, type ReviewState } from './Overlay';
 import { OVERLAY_CSS } from './styles';
 
@@ -11,6 +12,8 @@ export interface OverlayController {
   showReview(review: ReviewState): void;
   hideReview(): void;
   toast(text: string, action?: ToastAction): void;
+  /** Update the live "will be masked" chip (empty array hides it). */
+  setLiveFindings(findings: readonly Finding[]): void;
   destroy(): void;
 }
 
@@ -32,7 +35,7 @@ export function mountOverlay(doc: Document = document): OverlayController {
   shadow.appendChild(container);
 
   const root = createRoot(container);
-  let state: OverlayState = { review: null, toasts: [] };
+  let state: OverlayState = { review: null, toasts: [], live: [] };
   let nextToastId = 1;
   const timers = new Set<ReturnType<typeof setTimeout>>();
 
@@ -50,6 +53,9 @@ export function mountOverlay(doc: Document = document): OverlayController {
     },
     hideReview() {
       set({ review: null });
+    },
+    setLiveFindings(findings) {
+      set({ live: findings });
     },
     toast(text, action) {
       const id = nextToastId++;

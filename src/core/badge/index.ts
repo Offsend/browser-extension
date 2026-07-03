@@ -1,3 +1,4 @@
+import { t as i18n } from '@/core/i18n';
 import type { HealthReply } from '@/core/messaging/protocol';
 
 /**
@@ -16,14 +17,14 @@ export interface BadgeStyle {
   readonly title: string;
 }
 
-const STYLES: Record<BadgeState, BadgeStyle> = {
-  inactive: { color: '#9CA3AF', title: 'Offsend — not active on this site' },
-  preparing: { color: '#F59E0B', title: 'Offsend — getting ready…' },
-  active: { color: '#22C55E', title: 'Offsend — active & protecting' },
+const COLORS: Record<BadgeState, string> = {
+  inactive: '#9CA3AF',
+  preparing: '#F59E0B',
+  active: '#22C55E',
 };
 
 export function badgeStyle(state: BadgeState): BadgeStyle {
-  return STYLES[state];
+  return { color: COLORS[state], title: i18n().badge[state] };
 }
 
 /**

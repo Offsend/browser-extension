@@ -15,6 +15,13 @@ export interface SubmitInterceptionConfig {
 /** Maps a composer element to the function that programmatically sends it. */
 const submitters = new WeakMap<Element, () => void>();
 
+/** Modifier state of an Enter submit, replayed on programmatic resubmit. */
+interface EnterModifiers {
+  readonly metaKey: boolean;
+  readonly ctrlKey: boolean;
+  readonly altKey: boolean;
+}
+
 /**
  * Intercepts submit attempts in the capture phase, *before* the site handles
  * them. Because detection is async, every candidate submit is prevented first;
@@ -27,11 +34,19 @@ const submitters = new WeakMap<Element, () => void>();
 export function interceptSubmit(cfg: SubmitInterceptionConfig): Unsubscribe {
   const doc = cfg.composer.ownerDocument;
   let reentrant = false;
+  // Some sites bind send to Cmd/Ctrl+Enter; replaying a bare Enter there would
+  // insert a newline instead of sending, so the intercepted modifiers are kept.
+  let enterModifiers: EnterModifiers = { metaKey: false, ctrlKey: false, altKey: false };
 
   function resubmitEnter(): void {
     cfg.composer.focus();
     cfg.composer.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+      new KeyboardEvent('keydown', {
+        key: 'Enter',
+        bubbles: true,
+        cancelable: true,
+        ...enterModifiers,
+      }),
     );
   }
 
@@ -69,6 +84,7 @@ export function interceptSubmit(cfg: SubmitInterceptionConfig): Unsubscribe {
   const onKeydown = (e: Event): void => {
     const ke = e as KeyboardEvent;
     if (ke.key !== 'Enter' || ke.shiftKey || ke.isComposing) return;
+    enterModifiers = { metaKey: ke.metaKey, ctrlKey: ke.ctrlKey, altKey: ke.altKey };
     void handle('enter', e);
   };
 

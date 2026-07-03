@@ -1,7 +1,10 @@
 import { useState } from 'react';
+import { t as i18n } from '@/core/i18n';
 import { CUSTOM_RULE_LIMITS, type CustomRule } from '@/core/storage';
 import { Button, Toggle, type Theme } from '@/ui';
 import { CustomRuleModal } from './CustomRuleModal';
+
+const M = i18n();
 
 function newRule(): CustomRule {
   return {
@@ -70,8 +73,8 @@ export function CustomRulesEditor({ t, rules, onRulesChange }: CustomRulesEditor
       <div style={{ padding: '14px 0' }}>
         {rules.length === 0 ? (
           <p style={{ margin: '0 0 12px', fontSize: 12.5, color: t.textSub, lineHeight: 1.5 }}>
-            No custom rules yet. Add a JavaScript regex to match company-specific values (without{' '}
-            <code style={{ fontFamily: 'monospace' }}>/…/</code> delimiters).
+            {M.rules.empty} <code style={{ fontFamily: 'monospace' }}>/…/</code>{' '}
+            {M.rules.emptyDelimiters}
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -111,7 +114,7 @@ export function CustomRulesEditor({ t, rules, onRulesChange }: CustomRulesEditor
                   </div>
                 </div>
                 <Button t={t} variant="outline" sm onClick={() => openEdit(rule)}>
-                  Edit
+                  {M.rules.edit}
                 </Button>
                 <Toggle t={t} on={rule.enabled} onChange={() => toggleRule(rule.id)} />
               </div>
@@ -121,11 +124,11 @@ export function CustomRulesEditor({ t, rules, onRulesChange }: CustomRulesEditor
 
         <div style={{ marginTop: 12 }}>
           <Button t={t} variant="outline" onClick={openAdd} disabled={atLimit}>
-            Add rule
+            {M.rules.addRule}
           </Button>
           {atLimit && (
             <span style={{ display: 'block', marginTop: 8, fontSize: 11.5, color: t.textSub }}>
-              Maximum of {CUSTOM_RULE_LIMITS.maxRules} rules reached.
+              {M.rules.maxReached(CUSTOM_RULE_LIMITS.maxRules)}
             </span>
           )}
         </div>

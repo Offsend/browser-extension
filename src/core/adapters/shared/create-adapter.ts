@@ -1,6 +1,8 @@
+import { t as i18n } from '../../i18n';
 import { createCascadeResolver, type SelectorStrategy } from '../../selectors';
 import { CONTRACT_VERSION, type SiteAdapter, type SubmitContext } from '../types';
 import { readComposerText, writeComposerText } from './composer';
+import { interceptFileAttach } from './file-attach';
 import { interceptSubmit, submitComposer } from './submit';
 
 export interface AdapterConfig {
@@ -76,6 +78,14 @@ export function createAdapter(cfg: AdapterConfig): SiteAdapter {
     writeText: (composer, text) => writeComposerText(composer.element, text),
     submit: (composer) => submitComposer(composer.element),
 
+    onFileAttach: (root, handler) =>
+      interceptFileAttach(root, handler, {
+        // Drop targets are often transient drag overlays, unmounted before the
+        // async decision resolves; the composer is the stable element inside
+        // every site's drop zone, so replayed events bubble to their handler.
+        preferredReplayTarget: () => composerResolver.resolve(root),
+      }),
+
     findConversationRoot: conversationResolver
       ? (root) => conversationResolver.resolve(root)
       : undefined,
@@ -83,14 +93,14 @@ export function createAdapter(cfg: AdapterConfig): SiteAdapter {
     healthCheck(root) {
       const composerEl = composerResolver.resolve(root);
       if (!composerEl) {
-        return { status: 'degraded', reason: 'Prompt input not found' };
+        return { status: 'degraded', reason: i18n().health.promptInputNotFound };
       }
       // Some sites (e.g. Gemini) only render the Send control once the composer
       // has text — an empty composer with no Send button is healthy, not broken.
       // We still flag a genuinely missing Send button when text is present.
       const hasText = readComposerText(composerEl).trim().length > 0;
       if (hasText && !resolveSubmitButton(composerEl)) {
-        return { status: 'degraded', reason: 'Send button not found' };
+        return { status: 'degraded', reason: i18n().health.sendButtonNotFound };
       }
       return { status: 'ok' };
     },

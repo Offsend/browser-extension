@@ -1,10 +1,17 @@
-import { resolveAdapter, type ComposerHandle, type SubmitDecision } from '@/core/adapters';
+import {
+  resolveAdapter,
+  type ComposerHandle,
+  type FileDecision,
+  type SubmitDecision,
+} from '@/core/adapters';
 import type { DetectionEngine, Finding } from '@/core/detection';
-import { intercept } from '@/core/interceptor';
+import { t as i18n } from '@/core/i18n';
+import { intercept, interceptFiles, isAllowlisted, maskReviewedFiles } from '@/core/interceptor';
 import { maskText, type MappingEntry } from '@/core/masking';
 import type { MappingsReply, OffsendMessage } from '@/core/messaging/protocol';
-import { restoreInDom } from '@/core/restore';
+import { restoreInDom, restoreInText } from '@/core/restore';
 import { SettingsStore, createBrowserBackend, createEngine } from '@/core/storage';
+import { attachComposerHighlight, type ComposerHighlighter } from '@/ui/highlight';
 import { mountOverlay } from '@/ui/overlay';
 
 /**
@@ -16,17 +23,36 @@ export default defineContentScript({
     'https://chatgpt.com/*',
     'https://claude.ai/*',
     'https://gemini.google.com/*',
+    'https://chat.deepseek.com/*',
+    'https://www.perplexity.ai/*',
+    'https://perplexity.ai/*',
+    'https://grok.com/*',
+    'https://www.grok.com/*',
   ],
   async main() {
     const adapter = resolveAdapter(location.href);
     if (!adapter) return;
 
+    const M = i18n();
     const overlay = mountOverlay();
     const store = new SettingsStore(createBrowserBackend(browser.storage.local));
     const host = location.hostname;
     let engine: DetectionEngine = createEngine([]);
 
-    const send = (message: OffsendMessage) => browser.runtime.sendMessage(message);
+    /**
+     * Best-effort messaging: the background can be unreachable (asleep,
+     * mid-update, or an orphaned context after an extension reload) and
+     * `sendMessage` then throws or rejects. Vault saves, health reports and
+     * Restore lookups are secondary to masking itself — a messaging failure
+     * must never abort a mask/attach/send flow.
+     */
+    const send = async (message: OffsendMessage): Promise<unknown> => {
+      try {
+        return await browser.runtime.sendMessage(message);
+      } catch {
+        return undefined;
+      }
+    };
 
     const saveMappings = (mappings: readonly MappingEntry[], ttlMinutes: number) =>
       void send({ type: 'save-mappings', mappings: [...mappings], ttlMinutes });
@@ -35,11 +61,18 @@ export default defineContentScript({
       const reply = (await send({ type: 'get-mappings' })) as MappingsReply | undefined;
       const mappings = reply?.mappings ?? [];
       const root = adapter.findConversationRoot?.(document) ?? document.body;
-      const n = restoreInDom(root, mappings);
-      overlay.toast(n > 0 ? `Restored ${n} value${n === 1 ? '' : 's'}` : 'Nothing to restore');
+      let n = restoreInDom(root, mappings);
+      // restoreInDom skips editable nodes by design — the composer is restored
+      // through the adapter so the site's editor model sees the change.
+      if (composer?.element.isConnected) {
+        const { text, count } = restoreInText(adapter.readText(composer), mappings);
+        if (count > 0) {
+          adapter.writeText(composer, text);
+          n += count;
+        }
+      }
+      overlay.toast(n > 0 ? M.toast.restored(n) : M.toast.nothingToRestore);
     };
-
-    const masked = (n: number) => `Masked ${n} value${n === 1 ? '' : 's'}`;
 
     const nextFrame = () =>
       new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
@@ -87,11 +120,14 @@ export default defineContentScript({
           case 'auto-mask': {
             const ok = await applyMaskedText(ctx.composer, outcome.masked, outcome.mappings);
             if (!ok) {
-              overlay.toast('Masking failed — message not sent');
+              overlay.toast(M.toast.maskingFailed);
               return { action: 'block' };
             }
             saveMappings(outcome.mappings, ttl);
-            overlay.toast(masked(outcome.findings.length), { label: 'Restore', onClick: restore });
+            overlay.toast(M.toast.masked(outcome.findings.length), {
+              label: M.toast.restoreAction,
+              onClick: restore,
+            });
             return { action: 'allow' };
           }
 
@@ -112,13 +148,13 @@ export default defineContentScript({
                 );
                 const ok = await applyMaskedText(ctx.composer, finalMasked, finalMappings);
                 if (!ok) {
-                  overlay.toast('Masking failed — message not sent');
+                  overlay.toast(M.toast.maskingFailed);
                   return;
                 }
                 saveMappings(finalMappings, ttl);
                 overlay.hideReview();
-                overlay.toast(masked(enabledFindings.length), {
-                  label: 'Restore',
+                overlay.toast(M.toast.masked(enabledFindings.length), {
+                  label: M.toast.restoreAction,
                   onClick: restore,
                 });
                 adapter.submit(ctx.composer);
@@ -133,12 +169,84 @@ export default defineContentScript({
         }
       });
 
+    /**
+     * File attachments (picker / drag-drop / paste) are scanned before the site
+     * receives them. Masked copies replace the originals; the overlay reuses
+     * the same review card with attachment-specific labels.
+     */
+    const wireFiles = (): (() => void) | null =>
+      adapter.onFileAttach?.(document, async (ctx): Promise<FileDecision> => {
+        const settings = await store.getSettings();
+        if (!settings.enabled) return { action: 'allow' };
+        const outcome = await interceptFiles(ctx.files, host, settings.policy, engine);
+        const ttl = settings.mappingTtlMinutes;
+
+        switch (outcome.kind) {
+          case 'allow':
+            return { action: 'allow' };
+
+          case 'auto-mask':
+            saveMappings(outcome.mappings, ttl);
+            overlay.toast(M.toast.maskedInAttachment(outcome.findings.length), {
+              label: M.toast.restoreAction,
+              onClick: restore,
+            });
+            return { action: 'replace', files: outcome.files };
+
+          case 'review':
+            return new Promise<FileDecision>((resolve) => {
+              overlay.showReview({
+                findings: outcome.findings,
+                text: outcome.combined,
+                canSendAnyway: outcome.canSendAnyway,
+                confirmLabel: M.overlay.maskAndAttach,
+                bypassLabel: M.overlay.attachAnyway,
+                onMaskSend: (enabledFindings: readonly Finding[]) => {
+                  overlay.hideReview();
+                  if (enabledFindings.length === 0) {
+                    resolve({ action: 'allow' });
+                    return;
+                  }
+                  const next = maskReviewedFiles(outcome, enabledFindings);
+                  // Resolve first: attaching the masked files must not depend
+                  // on the vault save or the toast succeeding.
+                  resolve({ action: 'replace', files: next.files });
+                  saveMappings(next.mappings, ttl);
+                  overlay.toast(M.toast.maskedInAttachment(enabledFindings.length), {
+                    label: M.toast.restoreAction,
+                    onClick: restore,
+                  });
+                },
+                onSendAnyway: () => {
+                  overlay.hideReview();
+                  resolve({ action: 'allow' });
+                },
+                onCancel: () => {
+                  overlay.hideReview();
+                  resolve({ action: 'block' });
+                },
+              });
+            });
+        }
+      }) ?? null;
+
     let composer: ComposerHandle | null = null;
     let unsubscribe: (() => void) | null = null;
+    let unsubscribeFiles: (() => void) | null = null;
+    let highlighter: ComposerHighlighter | null = null;
+
+    /** Same filters as submit-time interception: allowlist + enabled types. */
+    const scanLive = async (text: string): Promise<readonly Finding[]> => {
+      const settings = await store.getSettings();
+      if (!settings.enabled || isAllowlisted(host, settings.policy.allowlist)) return [];
+      return engine.scan(text, { types: settings.policy.enabledTypes ?? undefined });
+    };
 
     const unwire = () => {
       unsubscribe?.();
       unsubscribe = null;
+      highlighter?.detach();
+      highlighter = null;
     };
 
     const reportHealth = () => {
@@ -147,7 +255,7 @@ export default defineContentScript({
           type: 'report-health',
           adapterId: adapter.id,
           status: 'inactive',
-          reason: 'Protection paused',
+          reason: M.health.protectionPaused,
         });
         return;
       }
@@ -178,6 +286,11 @@ export default defineContentScript({
         unwire();
         composer = null;
       }
+      if (composer && unsubscribe && !highlighter) {
+        highlighter = attachComposerHighlight(composer.element, scanLive, (findings) =>
+          overlay.setLiveFindings(findings),
+        );
+      }
     };
 
     const applyEnabled = async (next: boolean) => {
@@ -185,11 +298,14 @@ export default defineContentScript({
       enabled = next;
       if (!enabled) {
         unwire();
+        unsubscribeFiles?.();
+        unsubscribeFiles = null;
         overlay.hideReview();
         reportHealth();
         return;
       }
       bindComposer(adapter.findComposer(document));
+      unsubscribeFiles ??= wireFiles();
       reportHealth();
     };
 
@@ -197,10 +313,15 @@ export default defineContentScript({
       const settings = await store.getSettings();
       engine = createEngine(settings.customRules);
       await applyEnabled(settings.enabled);
+      // Rules / enabled types may have changed — re-evaluate the live chip.
+      highlighter?.refresh();
     };
 
     await syncFromStorage();
-    if (enabled) bindComposer(adapter.findComposer(document));
+    if (enabled) {
+      bindComposer(adapter.findComposer(document));
+      unsubscribeFiles ??= wireFiles();
+    }
     reportHealth();
 
     browser.storage.onChanged.addListener((changes, area) => {
@@ -218,6 +339,8 @@ export default defineContentScript({
     window.addEventListener('pagehide', () => {
       clearInterval(interval);
       unwire();
+      unsubscribeFiles?.();
+      unsubscribeFiles = null;
       overlay.destroy();
     });
   },

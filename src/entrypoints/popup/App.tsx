@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
+import { t as i18n } from '@/core/i18n';
 import type { HealthReply } from '@/core/messaging/protocol';
 import { SettingsStore, createBrowserBackend, type PolicyMode } from '@/core/storage';
 import { Badge, Brand, Button, IGear, Toggle, useTheme, type Theme } from '@/ui';
+
+const M = i18n();
 
 function hostOf(url: string | null): string | null {
   if (!url) return null;
@@ -12,37 +15,33 @@ function hostOf(url: string | null): string | null {
   }
 }
 
-const MODE_LABEL: Record<PolicyMode, string> = {
-  warn: 'Warn',
-  'auto-mask': 'Auto-mask',
-  block: 'Block',
-};
+const MODE_LABEL: Record<PolicyMode, string> = M.mode;
 
 function StatusBadge({ t, health }: { t: Theme; health: HealthReply | null }) {
   if (!health || health.status === 'inactive') {
     return (
       <Badge t={t} tone="neutral">
-        not supported
+        {M.popup.notSupported}
       </Badge>
     );
   }
   if (health.status === 'connecting') {
     return (
       <Badge t={t} tone="warn" dot>
-        connecting…
+        {M.popup.connecting}
       </Badge>
     );
   }
   if (health.status === 'degraded') {
     return (
       <Badge t={t} tone="warn" title={health.reason} dot>
-        degraded
+        {M.popup.degraded}
       </Badge>
     );
   }
   return (
     <Badge t={t} tone="ok" dot>
-      {health.adapterId ?? 'active'}
+      {health.adapterId ?? M.popup.active}
     </Badge>
   );
 }
@@ -132,10 +131,10 @@ export function App() {
       }}
     >
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Brand t={t} subtitle="Local-only" />
+        <Brand t={t} subtitle={M.popup.localOnly} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 11, color: t.textSub, userSelect: 'none' }}>
-            {enabled ? 'On' : 'Off'}
+            {enabled ? M.popup.on : M.popup.off}
           </span>
           <Toggle t={t} size="sm" on={enabled} onChange={() => void toggleEnabled()} />
         </div>
@@ -150,21 +149,21 @@ export function App() {
           overflow: 'hidden',
         }}
       >
-        <InfoRow t={t} label="Site">
+        <InfoRow t={t} label={M.popup.site}>
           {host ?? '—'}
         </InfoRow>
         <div style={{ height: 1, background: t.border }} />
-        <InfoRow t={t} label="Adapter">
+        <InfoRow t={t} label={M.popup.adapter}>
           {!enabled ? (
             <Badge t={t} tone="neutral">
-              paused
+              {M.popup.paused}
             </Badge>
           ) : (
             <StatusBadge t={t} health={health} />
           )}
         </InfoRow>
         <div style={{ height: 1, background: t.border }} />
-        <InfoRow t={t} label="Mode">
+        <InfoRow t={t} label={M.popup.mode}>
           {mode ? MODE_LABEL[mode] : '—'}
         </InfoRow>
       </div>
@@ -181,7 +180,7 @@ export function App() {
             borderRadius: 8,
           }}
         >
-          {health.reason} — protection may be incomplete.
+          {M.popup.protectionIncomplete(health.reason)}
         </p>
       )}
 
@@ -193,12 +192,12 @@ export function App() {
           icon={<IGear size={14} color={t.textSub} />}
           onClick={() => browser.runtime.openOptionsPage()}
         >
-          Settings
+          {M.popup.settings}
         </Button>
       </div>
 
       <p style={{ margin: '12px 0 2px', fontSize: 11, color: t.textMuted, textAlign: 'center' }}>
-        Content never leaves your device.
+        {M.popup.footer}
       </p>
     </main>
   );

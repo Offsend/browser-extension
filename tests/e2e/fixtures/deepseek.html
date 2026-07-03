@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>DeepSeek fixture</title>
+  </head>
+  <body>
+    <main>
+      <section id="conversation" aria-label="Conversation"></section>
+      <!-- Mirrors chat.deepseek.com: a plain textarea and an unlabelled icon
+           send control (div[role=button] with only aria-disabled as a stable trait). -->
+      <div class="chat-input-panel">
+        <textarea id="chat-input" placeholder="Message DeepSeek"></textarea>
+        <div class="ds-icon-button" role="button" aria-disabled="false" tabindex="0">
+          <svg viewBox="0 0 24 24"><path d="M12 4l8 8h-6v8h-4v-8H4z" /></svg>
+        </div>
+      </div>
+    </main>
+    <script>
+      const composer = document.querySelector('#chat-input');
+      const send = document.querySelector('[role="button"][aria-disabled]');
+      const conversation = document.querySelector('#conversation');
+
+      function submit() {
+        const text = composer.value;
+        const user = document.createElement('p');
+        user.dataset.role = 'user';
+        user.textContent = text;
+        conversation.append(user);
+
+        const assistant = document.createElement('p');
+        assistant.dataset.role = 'assistant';
+        assistant.textContent = `DeepSeek saw: ${text}`;
+        conversation.append(assistant);
+      }
+
+      send.addEventListener('click', submit);
+      composer.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) submit();
+      });
+    </script>
+  </body>
+</html>

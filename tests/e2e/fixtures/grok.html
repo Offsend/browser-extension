@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Grok fixture</title>
+  </head>
+  <body>
+    <main>
+      <section id="conversation" aria-label="Conversation"></section>
+      <!-- Mirrors grok.com (Tiptap variant): a ProseMirror contenteditable with
+           role=textbox inside a form, and a submit button with data-testid. -->
+      <form id="composer-form">
+        <div
+          class="tiptap ProseMirror"
+          role="textbox"
+          contenteditable="true"
+          aria-label="Ask Grok anything"
+        ></div>
+        <button type="submit" aria-label="Submit" data-testid="chat-submit">Submit</button>
+      </form>
+    </main>
+    <script>
+      const form = document.querySelector('#composer-form');
+      const composer = document.querySelector('[role="textbox"]');
+      const conversation = document.querySelector('#conversation');
+
+      function submit() {
+        const text = composer.innerText;
+        const user = document.createElement('p');
+        user.dataset.role = 'user';
+        user.textContent = text;
+        conversation.append(user);
+
+        const assistant = document.createElement('p');
+        assistant.dataset.role = 'assistant';
+        assistant.textContent = `Grok saw: ${text}`;
+        conversation.append(assistant);
+      }
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        submit();
+      });
+      composer.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) submit();
+      });
+    </script>
+  </body>
+</html>

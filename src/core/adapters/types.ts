@@ -32,14 +32,19 @@ export type SubmitDecision =
   | { readonly action: 'allow' }
   | { readonly action: 'block' };
 
-export interface FileLike {
-  readonly name: string;
-  readonly type: string;
-  readonly size: number;
-  text(): Promise<string>;
+/** How the files arrived: hidden file input, drag-and-drop, or clipboard. */
+export type FileAttachTrigger = 'input' | 'drop' | 'paste';
+
+export interface FileAttachContext {
+  readonly files: readonly File[];
+  readonly trigger: FileAttachTrigger;
 }
 
-export type FileDecision = { readonly action: 'allow' } | { readonly action: 'block' };
+/** What to do with an attempted file attach. `replace` swaps in masked copies. */
+export type FileDecision =
+  | { readonly action: 'allow' }
+  | { readonly action: 'block' }
+  | { readonly action: 'replace'; readonly files: readonly File[] };
 
 export type AdapterHealthStatus = 'ok' | 'degraded';
 
@@ -86,10 +91,13 @@ export interface SiteAdapter {
    */
   findConversationRoot?(root: Document): HTMLElement | null;
 
-  /** Optional: intercept attached files. */
+  /**
+   * Optional: intercept files attached via file input, drag-and-drop or paste,
+   * page-wide. The handler decides before the site ever sees the files.
+   */
   onFileAttach?(
-    composer: ComposerHandle,
-    handler: (files: readonly FileLike[]) => FileDecision | Promise<FileDecision>,
+    root: Document,
+    handler: (ctx: FileAttachContext) => FileDecision | Promise<FileDecision>,
   ): Unsubscribe;
 
   /** Self-check: does the adapter still understand the page? */

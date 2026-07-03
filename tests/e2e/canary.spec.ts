@@ -30,6 +30,35 @@ const TARGETS = [
       'textarea',
     ],
   },
+  {
+    name: 'DeepSeek',
+    url: 'https://chat.deepseek.com/',
+    composerCandidates: [
+      '#chat-input',
+      'textarea[placeholder*="DeepSeek" i]',
+      '[role="textbox"][contenteditable="true"]',
+      'textarea',
+    ],
+  },
+  {
+    name: 'Perplexity',
+    url: 'https://www.perplexity.ai/',
+    composerCandidates: [
+      '#ask-input',
+      '[role="textbox"][contenteditable="true"]',
+      'textarea',
+    ],
+  },
+  {
+    name: 'Grok',
+    url: 'https://grok.com/',
+    composerCandidates: [
+      '[aria-label*="Grok" i][contenteditable="true"]',
+      'textarea[aria-label*="Grok" i]',
+      '[role="textbox"][contenteditable="true"]',
+      'form textarea',
+    ],
+  },
 ] as const;
 
 for (const target of TARGETS) {

@@ -33,6 +33,56 @@ describe('TsEngine', () => {
     expect(invalid.some((f) => f.type === 'credit_card')).toBe(false);
   });
 
+  it('detects Stripe keys', async () => {
+    const findings = await engine.scan('use sk_live_4eC39HqLyjWDarjtT1zdp7dc');
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.detector).toBe('stripe-key');
+    expect(findings[0]!.type).toBe('api_key');
+  });
+
+  it('detects database URLs with embedded passwords', async () => {
+    const text = 'db is postgres://admin:s3cret@db.internal:5432/app ok';
+    const findings = await engine.scan(text);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.detector).toBe('database-url-password');
+    expect(findings[0]!.value).toBe('postgres://admin:s3cret@db.internal:5432/app');
+  });
+
+  it('detects bearer tokens but not bearer prose', async () => {
+    const hit = await engine.scan('Authorization: Bearer AbC123xYz456QrS789tUv012');
+    expect(hit.some((f) => f.detector === 'bearer-token')).toBe(true);
+
+    const miss = await engine.scan('the Bearer of_unfortunate_news arrived');
+    expect(miss).toEqual([]);
+  });
+
+  it('keeps the Bearer prefix readable when the token is a JWT', async () => {
+    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.dBjftJeZ4CVP';
+    const findings = await engine.scan(`Bearer ${jwt}`);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.detector).toBe('jwt');
+    expect(findings[0]!.value).toBe(jwt);
+  });
+
+  it('validates IBANs with the mod-97 checksum', async () => {
+    const valid = await engine.scan('pay to DE89 3704 0044 0532 0130 00 today');
+    expect(valid).toHaveLength(1);
+    expect(valid[0]!.type).toBe('iban');
+
+    const invalid = await engine.scan('pay to DE89 3704 0044 0532 0130 01 today');
+    expect(invalid.some((f) => f.type === 'iban')).toBe(false);
+  });
+
+  it('detects generic high-entropy secrets without flagging identifiers', async () => {
+    const secret = await engine.scan('value q7PzR2wXv9Lk4TmB8sYd1NcJ here');
+    expect(secret).toHaveLength(1);
+    expect(secret[0]!.detector).toBe('high-entropy-string');
+    expect(secret[0]!.type).toBe('secret');
+
+    expect(await engine.scan('call getUserAccountManager123 now')).toEqual([]);
+    expect(await engine.scan('internationalizationandlocalization')).toEqual([]);
+  });
+
   it('respects the type filter', async () => {
     const findings = await engine.scan('a@b.com +1 415 555 1234', { types: ['email'] });
     expect(findings).toHaveLength(1);

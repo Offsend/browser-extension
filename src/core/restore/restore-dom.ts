@@ -3,6 +3,27 @@ import type { MappingEntry } from '../masking';
 const PLACEHOLDER_RE = /\{\{[A-Z_]+_\d+(?:_[a-z0-9]+)?\}\}/g;
 
 /**
+ * Replace known placeholders in a plain string. Used for the composer, which
+ * {@link restoreInDom} deliberately skips (editable content must be written
+ * through the adapter so the site's editor model picks up the change).
+ */
+export function restoreInText(
+  text: string,
+  mappings: readonly MappingEntry[],
+): { readonly text: string; readonly count: number } {
+  if (mappings.length === 0 || !text.includes('{{')) return { text, count: 0 };
+  const byPlaceholder = new Map(mappings.map((m) => [m.placeholder, m.value]));
+  let count = 0;
+  const restored = text.replace(PLACEHOLDER_RE, (ph) => {
+    const value = byPlaceholder.get(ph);
+    if (value === undefined) return ph;
+    count++;
+    return value;
+  });
+  return { text: restored, count };
+}
+
+/**
  * Replace placeholders with their originals in text nodes under `root`, locally.
  * Skips editable, script, style and textarea nodes so we never touch the
  * composer or executable content. Returns the number of substitutions made.

@@ -36,4 +36,17 @@ describe('ADAPTERS registry', () => {
   it('includes gemini.google.com', () => {
     expect(resolveAdapter('https://gemini.google.com/app', ADAPTERS)?.id).toBe('gemini');
   });
+
+  it('includes chat.deepseek.com', () => {
+    expect(resolveAdapter('https://chat.deepseek.com/', ADAPTERS)?.id).toBe('deepseek');
+  });
+
+  it('includes perplexity.ai with and without www', () => {
+    expect(resolveAdapter('https://www.perplexity.ai/', ADAPTERS)?.id).toBe('perplexity');
+    expect(resolveAdapter('https://perplexity.ai/search/x', ADAPTERS)?.id).toBe('perplexity');
+  });
+
+  it('includes grok.com', () => {
+    expect(resolveAdapter('https://grok.com/chat', ADAPTERS)?.id).toBe('grok');
+  });
 });

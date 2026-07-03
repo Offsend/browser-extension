@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FindingType } from '@/core/detection';
+import { t as i18n } from '@/core/i18n';
 import {
   DEFAULT_SETTINGS,
   SettingsStore,
@@ -20,17 +21,9 @@ import {
 } from '@/ui';
 import { CustomRulesEditor } from './CustomRulesEditor';
 
-const TYPE_LABEL: Record<FindingType, string> = {
-  email: 'Email addresses',
-  phone: 'Phone numbers',
-  api_key: 'API keys',
-  token: 'Tokens',
-  private_key: 'Private keys',
-  credit_card: 'Credit cards',
-  ip_address: 'IP addresses',
-  uuid: 'UUIDs',
-  custom: 'Custom rules',
-};
+const M = i18n();
+
+const TYPE_LABEL: Record<FindingType, string> = M.typeName;
 
 const ALL_TYPES: readonly FindingType[] = [
   'email',
@@ -39,15 +32,17 @@ const ALL_TYPES: readonly FindingType[] = [
   'token',
   'private_key',
   'credit_card',
+  'iban',
   'ip_address',
   'uuid',
+  'secret',
   'custom',
 ];
 
 const MODES: readonly { value: PolicyMode; label: string; hint: string }[] = [
-  { value: 'warn', label: 'Warn', hint: 'Review findings before anything is sent. (Default)' },
-  { value: 'auto-mask', label: 'Auto-mask', hint: 'Mask and send, then show a quiet notification.' },
-  { value: 'block', label: 'Block', hint: 'Sending is blocked until sensitive values are masked.' },
+  { value: 'warn', label: M.mode.warn, hint: M.options.modeWarnHint },
+  { value: 'auto-mask', label: M.mode['auto-mask'], hint: M.options.modeAutoMaskHint },
+  { value: 'block', label: M.mode.block, hint: M.options.modeBlockHint },
 ];
 
 function Radio({ t, on }: { t: Theme; on: boolean }) {
@@ -100,7 +95,7 @@ export function App() {
           fontSize: 13,
         }}
       >
-        Loading…
+        {M.options.loading}
       </main>
     );
   }
@@ -151,19 +146,17 @@ export function App() {
             justifyContent: 'space-between',
           }}
         >
-          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: t.text }}>Settings</h1>
+          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: t.text }}>
+            {M.options.title}
+          </h1>
           <Badge t={t} tone="ok" dot>
-            Local-only
+            {M.options.localOnly}
           </Badge>
         </div>
       </header>
 
       <main style={{ maxWidth: 640, margin: '0 auto', padding: '24px 20px 56px' }}>
-        <Group
-          t={t}
-          title="Mode"
-          hint="How Offsend reacts when it finds sensitive data in a prompt."
-        >
+        <Group t={t} title={M.options.modeTitle} hint={M.options.modeHint}>
           {MODES.map((m) => (
             <button
               key={m.value}
@@ -195,11 +188,7 @@ export function App() {
           ))}
         </Group>
 
-        <Group
-          t={t}
-          title="Detectors"
-          hint="Choose which kinds of sensitive values Offsend scans for."
-        >
+        <Group t={t} title={M.options.detectorsTitle} hint={M.options.detectorsHint}>
           {ALL_TYPES.map((ty) => (
             <Row key={ty} t={t} label={TYPE_LABEL[ty]}>
               <Toggle t={t} on={isTypeOn(ty)} onChange={() => toggleType(ty)} />
@@ -207,11 +196,7 @@ export function App() {
           ))}
         </Group>
 
-        <Group
-          t={t}
-          title="Custom rules"
-          hint="JavaScript regex patterns matched in addition to built-in detectors. Toggle “Custom rules” under Detectors to enable or disable them."
-        >
+        <Group t={t} title={M.options.customRulesTitle} hint={M.options.customRulesHint}>
           <CustomRulesEditor
             t={t}
             rules={settings.customRules}
@@ -219,12 +204,8 @@ export function App() {
           />
         </Group>
 
-        <Group t={t} title="Masking">
-          <Row
-            t={t}
-            label="Restore window"
-            hint="How long encrypted mappings are kept so you can restore originals."
-          >
+        <Group t={t} title={M.options.maskingTitle}>
+          <Row t={t} label={M.options.restoreWindow} hint={M.options.restoreWindowHint}>
             <TextInput
               t={t}
               type="number"
@@ -238,20 +219,12 @@ export function App() {
                 })
               }
             />
-            <span style={{ fontSize: 12, color: t.textSub }}>min</span>
+            <span style={{ fontSize: 12, color: t.textSub }}>{M.options.minutes}</span>
           </Row>
         </Group>
 
-        <Group
-          t={t}
-          title="Privacy"
-          hint="Offsend never sends prompt content anywhere. The only optional signal is an anonymous “active install” ping (no content, no findings, no sites) so we can count active users."
-        >
-          <Row
-            t={t}
-            label="Anonymous usage ping"
-            hint="Sends at most one anonymous ping per day. Turn off to send nothing at all."
-          >
+        <Group t={t} title={M.options.privacyTitle} hint={M.options.privacyHint}>
+          <Row t={t} label={M.options.telemetryLabel} hint={M.options.telemetryHint}>
             <Toggle
               t={t}
               on={settings.telemetryEnabled}
@@ -262,11 +235,7 @@ export function App() {
           </Row>
         </Group>
 
-        <Group
-          t={t}
-          title="Allowlist"
-          hint="Hosts listed here are never scanned. One host per line."
-        >
+        <Group t={t} title={M.options.allowlistTitle} hint={M.options.allowlistHint}>
           <div style={{ padding: '14px 0' }}>
             <TextArea
               t={t}
@@ -288,7 +257,7 @@ export function App() {
 
         <div style={{ marginTop: 8 }}>
           <Button t={t} variant="outline" onClick={reset}>
-            Reset to defaults
+            {M.options.resetDefaults}
           </Button>
         </div>
       </main>

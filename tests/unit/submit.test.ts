@@ -53,6 +53,35 @@ describe('interceptSubmit', () => {
     unsub();
   });
 
+  it('replays Cmd/Ctrl modifiers when re-dispatching Enter', async () => {
+    let replayed: KeyboardEvent | null = null;
+    composer.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && !event.defaultPrevented) replayed = event;
+    });
+
+    const unsub = interceptSubmit({
+      composer,
+      getSubmitButton: () => sendButton,
+      onAttempt: async () => ({ action: 'allow' }),
+    });
+
+    composer.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Enter',
+        metaKey: true,
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+
+    await Promise.resolve();
+    expect(replayed).not.toBeNull();
+    expect(replayed!.metaKey).toBe(true);
+    expect(replayed!.ctrlKey).toBe(true);
+    unsub();
+  });
+
   it('clicks Send on allow when the user clicked the button', async () => {
     const sendClick = vi.fn();
     sendButton.addEventListener('click', sendClick);

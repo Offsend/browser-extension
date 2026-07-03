@@ -1,3 +1,4 @@
+import { t as i18n } from '@/core/i18n';
 import {
   getCustomRuleWarnings,
   validateCustomRule,
@@ -7,23 +8,11 @@ import {
 } from '@/core/storage';
 import { Button, Row, TextArea, TextInput, type Theme } from '@/ui';
 
-const VALIDATION_ERROR_LABEL: Record<CustomRuleValidationError, string> = {
-  empty_id: 'Rule id is missing.',
-  id_too_long: 'Id is too long.',
-  empty_name: 'Name is required.',
-  name_too_long: 'Name is too long.',
-  empty_pattern: 'Pattern is required.',
-  pattern_too_long: 'Pattern is too long.',
-  invalid_pattern: 'Invalid regular expression.',
-  unsafe_pattern: 'Pattern looks unsafe (nested quantifiers).',
-  invalid_flags: 'Flags must use only g, i, m, s, u, or y.',
-  too_many_rules: 'Too many rules.',
-};
+const M = i18n();
 
-const WARNING_LABEL: Record<CustomRuleWarning, string> = {
-  broad_pattern:
-    'This pattern may match large portions of text and mask more than you intend. Consider anchoring it (e.g. \\b…\\b) or adding literal characters.',
-};
+const VALIDATION_ERROR_LABEL: Record<CustomRuleValidationError, string> = M.rules.error;
+
+const WARNING_LABEL: Record<CustomRuleWarning, string> = M.rules.warning;
 
 function fieldError(rule: CustomRule, field: 'name' | 'pattern' | 'flags'): string | null {
   const error = validateCustomRule(rule).errors[field];
@@ -89,13 +78,13 @@ export function CustomRuleModal({
           id="custom-rule-modal-title"
           style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 600, color: t.text }}
         >
-          {mode === 'add' ? 'Add rule' : 'Edit rule'}
+          {mode === 'add' ? M.rules.addRule : M.rules.editRule}
         </h2>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <label style={{ display: 'block' }}>
             <span style={{ display: 'block', fontSize: 11.5, color: t.textSub, marginBottom: 6 }}>
-              Name
+              {M.rules.name}
             </span>
             <TextInput
               t={t}
@@ -111,7 +100,7 @@ export function CustomRuleModal({
 
           <label style={{ display: 'block' }}>
             <span style={{ display: 'block', fontSize: 11.5, color: t.textSub, marginBottom: 6 }}>
-              Pattern
+              {M.rules.pattern}
             </span>
             <TextArea
               t={t}
@@ -143,7 +132,7 @@ export function CustomRuleModal({
               ))}
           </label>
 
-          <Row t={t} label="Flags" hint="Optional. g is always applied. Example: i">
+          <Row t={t} label={M.rules.flags} hint={M.rules.flagsHint}>
             <TextInput
               t={t}
               width={72}
@@ -167,15 +156,15 @@ export function CustomRuleModal({
         >
           {mode === 'edit' && onRemove && (
             <Button t={t} variant="danger-ghost" onClick={onRemove}>
-              Remove rule
+              {M.rules.removeRule}
             </Button>
           )}
           <div style={{ flex: 1 }} />
           <Button t={t} variant="outline" onClick={onClose}>
-            Cancel
+            {M.rules.cancel}
           </Button>
           <Button t={t} variant="primary" onClick={onSubmit} disabled={!canSubmit}>
-            {mode === 'add' ? 'Add' : 'Save'}
+            {mode === 'add' ? M.rules.add : M.rules.save}
           </Button>
         </div>
       </div>

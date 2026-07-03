@@ -9,5 +9,5 @@ export {
 export { loadOrCreateKey } from './keystore';
 export { MappingVault } from './vault';
 export { createIdbRepository } from './idb-repository';
-export { restoreInDom } from './restore-dom';
+export { restoreInDom, restoreInText } from './restore-dom';
 export type { MappingRepository, VaultRecord } from './types';

@@ -7,14 +7,20 @@ export default defineConfig({
   // PNG or SVG) into 16/32/48/128 and wired into the manifest automatically.
   modules: ['@wxt-dev/module-react', '@wxt-dev/auto-icons'],
   manifest: {
-    name: 'Offsend — Mask Secrets Before Sending to AI',
-    description:
-      'Detect and mask API keys, tokens, private keys, emails, and personal data locally before sending to ChatGPT, Claude, or Gemini.',
+    // Name and description are localized via public/_locales/<lang>/messages.json.
+    name: '__MSG_extName__',
+    description: '__MSG_extDescription__',
+    default_locale: 'en',
     // Minimal host permissions: only the AI domains we actively support.
     host_permissions: [
       'https://chatgpt.com/*',
       'https://claude.ai/*',
       'https://gemini.google.com/*',
+      'https://chat.deepseek.com/*',
+      'https://www.perplexity.ai/*',
+      'https://perplexity.ai/*',
+      'https://grok.com/*',
+      'https://www.grok.com/*',
     ],
     permissions: ['storage'],
     // The on-page overlay renders the extension icon, so it must be readable
@@ -26,6 +32,11 @@ export default defineConfig({
           'https://chatgpt.com/*',
           'https://claude.ai/*',
           'https://gemini.google.com/*',
+          'https://chat.deepseek.com/*',
+          'https://www.perplexity.ai/*',
+          'https://perplexity.ai/*',
+          'https://grok.com/*',
+          'https://www.grok.com/*',
         ],
       },
     ],

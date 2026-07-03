@@ -4,7 +4,8 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-v0.0.2-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/offsend/kaaoodakdpdbdjcbhdbcodfjpfaiaaig)
 
-**Get it AI-ready before you hit send — right inside ChatGPT and Claude.**
+**Get it AI-ready before you hit send — right inside ChatGPT, Claude, Gemini,
+DeepSeek, Perplexity, and Grok.**
 
 Offsend already keeps your folders, files, and clipboard AI-ready on the Mac. Now
 that same protection lives where you actually talk to AI: the browser. As you type
@@ -30,26 +31,42 @@ Firefox and Edge builds are on the way.
 Part of the [Offsend macOS app & CLI](https://offsend.io/) — same local-first
 promise, same detectors, now in your AI chats.
 
+## Supported sites
+
+ChatGPT (chatgpt.com) · Claude (claude.ai) · Gemini (gemini.google.com) ·
+DeepSeek (chat.deepseek.com) · Perplexity (perplexity.ai) · Grok (grok.com)
+
 ## Why you'll want it
 
-- **Catch secrets before AI sees them.** Emails, phone numbers, IDs, API keys,
-  tokens, private keys, cards, and more — detected the moment you hit send.
+- **Catch secrets before AI sees them.** Emails, phone numbers, API keys, tokens
+  (JWT, Bearer, Slack, Stripe), private keys, database URLs with passwords, cards,
+  IBANs, IPs, UUIDs, and high-entropy strings — detected the moment you hit send.
+- **See findings as you type.** Sensitive values are underlined live in the
+  composer, with a quiet chip summarising what will be masked on send.
+- **Attachments are covered too.** Files added via the picker, drag-and-drop, or
+  paste are scanned locally; masked copies replace the originals before the site
+  ever sees them.
+- **Your own rules.** Add custom regex detectors in Settings alongside the
+  built-in set.
 - **Mask, don't lose meaning.** Sensitive values become stable placeholders like
   `{{API_KEY_1}}`, so your prompt still reads clearly to the AI.
 - **Reversible Restore.** Encrypted, time-limited mappings let you bring originals
-  back when you need them — the Offsend signature move.
+  back — in the conversation and in the composer — the Offsend signature move.
 - **Zero findings, zero friction.** Nothing sensitive in your text? Offsend stays
   out of your way completely.
 - **Honest about coverage.** If a site changes its layout, Offsend tells you it's
   degraded instead of pretending you're protected.
+- **Speaks your language.** UI is localised (English and Russian) based on the
+  browser language.
 
 ## How it works
 
-Offsend watches the way prompts actually leave the page — typing, pasting, and the
-Send button — and scans the text at submit time, all on your device:
+Offsend watches the way content actually leaves the page — typing, pasting,
+Enter / Cmd+Enter, the Send button, and file attachments (picker, drag-and-drop,
+paste) — and scans everything at submit time, all on your device:
 
-1. You write or paste a prompt and press Enter (or click Send).
-2. Offsend scans the text locally for sensitive values.
+1. You write or paste a prompt and press Enter (or click Send), or attach a file.
+2. Offsend scans the text (and text-like files) locally for sensitive values.
 3. Nothing found? It sends untouched.
 4. Something found? You choose: **Mask**, **Send anyway**, or **Cancel** — or let
    auto-mask handle it with a quiet toast.
@@ -65,12 +82,21 @@ hits the network.
 src/
   core/
     adapters/    # SiteAdapter contract + registry (one file per AI site)
+    badge/       # toolbar-icon traffic light (health → colour + tooltip)
     detection/   # DetectionEngine (TS engine now, shared WASM later)
+    i18n/        # typed message catalogs (en, ru)
+    interceptor/ # pure submit/file decisions (allow / auto-mask / review)
     masking/     # placeholders + reversible mapping
+    messaging/   # content ↔ background protocol
+    restore/     # encrypted TTL'd mapping vault (IndexedDB) + DOM restore
     selectors/   # cascading resolver with soft degradation
     storage/     # typed layer + schema migrations
-  entrypoints/   # background, content, popup (WXT)
-tests/unit/      # engine, masking, selectors, storage, registry
+    telemetry/   # optional anonymous "active install" ping
+  entrypoints/   # background, content, popup, options (WXT)
+  ui/            # shared components, Shadow-DOM overlay, live highlight
+tests/
+  unit/          # engine, masking, interceptor, selectors, storage, i18n, …
+  e2e/           # Playwright: fixture flows, network assert, live canaries
 ```
 
 Adding a new AI site is deliberately boring: one adapter file plus one line in
@@ -96,9 +122,9 @@ npm run test:e2e
 npm run build
 ```
 
-`npm run test:e2e` runs local fixture flows for ChatGPT/Claude plus a network assert
-that sensitive values are never sent in requests. Live-site canaries — which catch
-real layout changes before users do — run separately:
+`npm run test:e2e` runs local fixture flows for every supported site plus a network
+assert that sensitive values are never sent in requests. Live-site canaries — which
+catch real layout changes before users do — run separately:
 
 ```bash
 npm run test:canary

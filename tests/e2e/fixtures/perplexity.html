@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Perplexity fixture</title>
+  </head>
+  <body>
+    <main>
+      <section id="conversation" aria-label="Conversation"></section>
+      <!-- Mirrors perplexity.ai: a Lexical contenteditable (#ask-input,
+           role=textbox) and a Submit-labelled send button. -->
+      <div class="query-panel">
+        <div
+          id="ask-input"
+          role="textbox"
+          contenteditable="true"
+          aria-label="Ask anything"
+          aria-placeholder="Ask anything…"
+        ></div>
+        <button type="button" aria-label="Submit">Submit</button>
+      </div>
+    </main>
+    <script>
+      const composer = document.querySelector('#ask-input');
+      const send = document.querySelector('button[aria-label="Submit"]');
+      const conversation = document.querySelector('#conversation');
+
+      function submit() {
+        const text = composer.innerText;
+        const user = document.createElement('p');
+        user.dataset.role = 'user';
+        user.textContent = text;
+        conversation.append(user);
+
+        const assistant = document.createElement('p');
+        assistant.dataset.role = 'assistant';
+        assistant.textContent = `Perplexity saw: ${text}`;
+        conversation.append(assistant);
+      }
+
+      send.addEventListener('click', submit);
+      composer.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) submit();
+      });
+    </script>
+  </body>
+</html>

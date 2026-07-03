@@ -1,13 +1,20 @@
 import { useMemo, useState } from 'react';
 import type { Finding, FindingType } from '@/core/detection';
+import { t as i18n } from '@/core/i18n';
 import { maskText } from '@/core/masking';
 import { Badge, Button, Checkbox, FONT_MONO, useTheme, type Theme } from '@/ui';
+
+const M = i18n();
 
 export interface ReviewState {
   readonly findings: readonly Finding[];
   /** Original, unmasked prompt text — used to preview masking as toggles change. */
   readonly text: string;
   readonly canSendAnyway: boolean;
+  /** Primary action label; defaults to "Mask & send" (file flows override it). */
+  readonly confirmLabel?: string;
+  /** Bypass action label; defaults to "Send anyway". */
+  readonly bypassLabel?: string;
   /** Called with only the findings the user left enabled. */
   readonly onMaskSend: (findings: readonly Finding[]) => void;
   readonly onSendAnyway: () => void;
@@ -23,19 +30,11 @@ export interface ToastState {
 export interface OverlayState {
   readonly review: ReviewState | null;
   readonly toasts: readonly ToastState[];
+  /** Findings detected live while typing (empty → chip hidden). */
+  readonly live: readonly Finding[];
 }
 
-const TYPE_LABEL: Record<FindingType, string> = {
-  email: 'email',
-  phone: 'phone',
-  api_key: 'API key',
-  token: 'token',
-  private_key: 'private key',
-  credit_card: 'card',
-  ip_address: 'IP',
-  uuid: 'UUID',
-  custom: 'custom',
-};
+const TYPE_LABEL: Record<FindingType, string> = M.type;
 
 /** Same value+type always share one placeholder, so they're toggled as a group. */
 function findingKey(f: Finding): string {
@@ -108,9 +107,7 @@ function ReviewCard({ t, review }: { t: Theme; review: ReviewState }) {
           height={22}
           style={{ borderRadius: 6, display: 'block', flexShrink: 0 }}
         />
-        <span style={{ fontSize: 13.5, fontWeight: 600 }}>
-          {total} sensitive {total === 1 ? 'value' : 'values'} found
-        </span>
+        <span style={{ fontSize: 13.5, fontWeight: 600 }}>{M.overlay.sensitiveFound(total)}</span>
       </div>
 
       <div
@@ -177,17 +174,60 @@ function ReviewCard({ t, review }: { t: Theme; review: ReviewState }) {
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <Button t={t} variant="ghost" sm onClick={review.onCancel}>
-          Cancel
+          {M.overlay.cancel}
         </Button>
         {review.canSendAnyway && (
           <Button t={t} variant="outline" sm onClick={review.onSendAnyway}>
-            Send anyway
+            {review.bypassLabel ?? M.overlay.sendAnyway}
           </Button>
         )}
         <Button t={t} variant="primary" sm onClick={() => review.onMaskSend(enabledFindings)}>
-          Mask &amp; send
+          {review.confirmLabel ?? M.overlay.maskAndSend}
         </Button>
       </div>
+    </div>
+  );
+}
+
+/** Compact live indicator: what will be caught if the user sends right now. */
+function LiveChip({ t, findings }: { t: Theme; findings: readonly Finding[] }) {
+  const summary = useMemo(() => {
+    const counts = new Map<FindingType, number>();
+    for (const f of findings) counts.set(f.type, (counts.get(f.type) ?? 0) + 1);
+    return [...counts.entries()]
+      .map(([type, n]) => (n > 1 ? `${TYPE_LABEL[type]} ×${n}` : TYPE_LABEL[type]))
+      .join(', ');
+  }, [findings]);
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        background: t.card,
+        color: t.text,
+        border: `1px solid ${t.border2}`,
+        borderRadius: 999,
+        padding: '6px 12px',
+        fontSize: 12,
+        boxShadow: t.popShadow,
+        maxWidth: 340,
+      }}
+    >
+      <Badge t={t} tone="warn">
+        {findings.length}
+      </Badge>
+      <span
+        style={{
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          color: t.textSub,
+        }}
+      >
+        {M.overlay.liveChip(summary)}
+      </span>
     </div>
   );
 }
@@ -246,6 +286,7 @@ export function Overlay({ state }: { state: OverlayState }) {
       }}
     >
       {state.review && <ReviewCard t={t} review={state.review} />}
+      {!state.review && state.live.length > 0 && <LiveChip t={t} findings={state.live} />}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
         {state.toasts.map((toast) => (
           <Toast key={toast.id} t={t} toast={toast} />

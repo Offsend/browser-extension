@@ -1,13 +1,23 @@
 import { chatgptAdapter } from './chatgpt';
 import { claudeAdapter } from './claude';
+import { deepseekAdapter } from './deepseek';
 import { geminiAdapter } from './gemini';
+import { grokAdapter } from './grok';
+import { perplexityAdapter } from './perplexity';
 import type { SiteAdapter } from './types';
 
 /**
  * Adapter registry. Adding a new AI site = implement a SiteAdapter and add it
  * here — nothing else in the core changes.
  */
-export const ADAPTERS: readonly SiteAdapter[] = [chatgptAdapter, claudeAdapter, geminiAdapter];
+export const ADAPTERS: readonly SiteAdapter[] = [
+  chatgptAdapter,
+  claudeAdapter,
+  geminiAdapter,
+  deepseekAdapter,
+  perplexityAdapter,
+  grokAdapter,
+];
 
 /** Pick the adapter whose host globs match the given URL, if any. */
 export function resolveAdapter(url: string, adapters: readonly SiteAdapter[] = ADAPTERS): SiteAdapter | null {

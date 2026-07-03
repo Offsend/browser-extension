@@ -25,7 +25,7 @@ export type InterceptOutcome =
     };
 
 /** Hostname is checked against the allowlist case-insensitively. */
-function isAllowlisted(host: string, allowlist: readonly string[]): boolean {
+export function isAllowlisted(host: string, allowlist: readonly string[]): boolean {
   const h = host.toLowerCase();
   return allowlist.some((entry) => entry.toLowerCase() === h);
 }

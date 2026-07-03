@@ -12,8 +12,10 @@ export type FindingType =
   | 'token'
   | 'private_key'
   | 'credit_card'
+  | 'iban'
   | 'ip_address'
   | 'uuid'
+  | 'secret'
   | 'custom';
 
 /** A single detected sensitive value within the scanned text. */
