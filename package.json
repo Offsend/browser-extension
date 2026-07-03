@@ -1,10 +1,10 @@
 {
   "name": "offsend-extension",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Offsend browser extension — local detection & masking of sensitive data before it reaches web AI interfaces.",
   "private": true,
   "type": "module",
-  "author": "Simon Hudishkin",
+  "author": "Lab13, Simon Hudishkin",
   "homepage": "https://github.com/offsend/browser-extension#readme",
   "repository": {
     "type": "git",

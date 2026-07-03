@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "Offsend — enmascara secretos antes de enviar a la IA",
+    "description": "Extension name shown in the store and browser UI."
+  },
+  "extDescription": {
+    "message": "Detecta claves API, contraseñas y otros datos sensibles en los prompts de chat con IA y los enmascara localmente en el navegador antes de enviar.",
+    "description": "Extension description shown in the store and browser UI."
+  }
+}

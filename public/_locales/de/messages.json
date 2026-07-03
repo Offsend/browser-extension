@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "Offsend — Geheimnisse maskieren, bevor Sie an KI senden",
+    "description": "Extension name shown in the store and browser UI."
+  },
+  "extDescription": {
+    "message": "Erkennt API-Schlüssel, Passwörter und andere sensible Daten in KI-Chat-Prompts und maskiert sie lokal in Ihrem Browser, bevor Sie senden.",
+    "description": "Extension description shown in the store and browser UI."
+  }
+}
