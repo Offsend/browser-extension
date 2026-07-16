@@ -28,6 +28,9 @@ jobs:
       - name: Build & zip (Chrome)
         run: npm run zip
 
+      - name: Build & zip (Firefox)
+        run: npm run zip:firefox
+
       - name: Upload Chrome ZIP artifact
         uses: actions/upload-artifact@v4
         with:
@@ -37,6 +40,16 @@ jobs:
           # .output is a dotfile dir; upload-artifact@v4 skips hidden paths by default.
           include-hidden-files: true
 
+      - name: Upload Firefox ZIP artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firefox-extension
+          path: |
+            .output/*-firefox.zip
+            .output/*-sources.zip
+          if-no-files-found: error
+          include-hidden-files: true
+
       - name: Submit to Chrome Web Store
         run: npx wxt submit ${{ inputs.dry_run && '--dry-run' || '' }} --chrome-zip .output/*-chrome.zip
         env:
@@ -44,3 +57,11 @@ jobs:
           CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
           CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
           CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+
+      - name: Submit to Firefox Add-ons
+        run: npx wxt submit ${{ inputs.dry_run && '--dry-run' || '' }} --firefox-zip .output/*-firefox.zip --firefox-sources-zip .output/*-sources.zip
+        env:
+          FIREFOX_EXTENSION_ID: ${{ secrets.FIREFOX_EXTENSION_ID }}
+          FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
+          FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}
+          FIREFOX_CHANNEL: listed

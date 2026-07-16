@@ -1,8 +1,10 @@
 import { TELEMETRY } from './config';
 import { buildAliveSignal, sha256Hex, shouldPing } from './client';
+import { hasTelemetryDataConsent } from './consent';
 
 export { TELEMETRY } from './config';
 export { buildAliveSignal, sha256Hex, shouldPing } from './client';
+export { hasTelemetryDataConsent, requestTelemetryDataConsent } from './consent';
 export type { AliveSignal } from './client';
 
 const ANON_ID_KEY = 'offsend:telemetry:anonId';
@@ -45,6 +47,7 @@ export async function maybePingActive(
 ): Promise<void> {
   const appId = opts.appId ?? TELEMETRY.appId;
   if (!enabled || !appId) return;
+  if (!(await hasTelemetryDataConsent())) return;
 
   const now = opts.now ?? Date.now();
   const minIntervalMs = opts.minIntervalMs ?? TELEMETRY.minIntervalMs;

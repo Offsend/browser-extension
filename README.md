@@ -4,8 +4,7 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-v0.0.2-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/offsend/kaaoodakdpdbdjcbhdbcodfjpfaiaaig)
 
-**Get it AI-ready before you hit send — right inside ChatGPT, Claude, Gemini,
-DeepSeek, Perplexity, and Grok.**
+**Get your prompts AI-ready before you hit send — right inside web AI chats.**
 
 Offsend already keeps your folders, files, and clipboard AI-ready on the Mac. Now
 that same protection lives where you actually talk to AI: the browser. As you type
@@ -26,15 +25,15 @@ No cloud account · No server-side scanning · No "trust us"
 
 **[Add Offsend to Chrome](https://chromewebstore.google.com/detail/offsend/kaaoodakdpdbdjcbhdbcodfjpfaiaaig)** — available on the
 [Chrome Web Store](https://chromewebstore.google.com/detail/offsend/kaaoodakdpdbdjcbhdbcodfjpfaiaaig).
-Firefox and Edge builds are on the way.
+Firefox build is on the same release pipeline; see [Publishing](#publishing) below.
 
 Part of the [Offsend macOS app & CLI](https://offsend.io/) — same local-first
 promise, same detectors, now in your AI chats.
 
 ## Supported sites
 
-ChatGPT (chatgpt.com) · Claude (claude.ai) · Gemini (gemini.google.com) ·
-DeepSeek (chat.deepseek.com) · Perplexity (perplexity.ai) · Grok (grok.com)
+chatgpt.com · claude.ai · gemini.google.com · chat.deepseek.com ·
+perplexity.ai · grok.com
 
 ## Why you'll want it
 
@@ -130,11 +129,40 @@ catch real layout changes before users do — run separately:
 npm run test:canary
 ```
 
+## Publishing
+
+Store packages are produced with WXT:
+
+```bash
+npm run zip          # Chrome (MV3)
+npm run zip:firefox  # Firefox (MV2) + sources zip for AMO review
+npm run zip:all      # both
+```
+
+| Store | Artifact | Notes |
+| --- | --- | --- |
+| Chrome Web Store | `.output/offsend-extension-*-chrome.zip` | MV3 |
+| Firefox Add-ons (AMO) | `.output/offsend-extension-*-firefox.zip` + `*-sources.zip` | MV2; sources zip required for review |
+
+Automated submission (after secrets are configured): GitHub Actions → **Release** workflow.
+Initialize store credentials once with `npx wxt submit init`.
+
+Chrome Web Store long description (use domains, not brand-name lists — avoids keyword-spam
+rejections): [`store-listing.en.txt`](store-listing.en.txt).
+
+**GitHub secrets for Firefox:** `FIREFOX_EXTENSION_ID` (`offsend@offsend.io`), `FIREFOX_JWT_ISSUER`, `FIREFOX_JWT_SECRET`
+
 ## Load unpacked (Chrome)
 
 1. `npm run build`
 2. Open `chrome://extensions`, enable Developer mode.
 3. "Load unpacked" → select `.output/chrome-mv3`.
+
+## Load unpacked (Firefox)
+
+1. `npm run build:firefox`
+2. Open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on…**
+3. Select `.output/firefox-mv2/manifest.json`.
 
 ## Telemetry
 

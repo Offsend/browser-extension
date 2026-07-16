@@ -20,4 +20,5 @@ jobs:
       - run: npm test
       - run: npx playwright install --with-deps chromium
       - run: npm run build
+      - run: npm run build:firefox
       - run: xvfb-run --auto-servernum npm run test:e2e -- --project=fixtures --project=network

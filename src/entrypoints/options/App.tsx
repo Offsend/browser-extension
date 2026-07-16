@@ -19,6 +19,7 @@ import {
   useTheme,
   type Theme,
 } from '@/ui';
+import { hasTelemetryDataConsent, requestTelemetryDataConsent } from '@/core/telemetry';
 import { CustomRulesEditor } from './CustomRulesEditor';
 
 const M = i18n();
@@ -69,10 +70,15 @@ export function App() {
     [],
   );
   const [settings, setSettings] = useState<Settings | null>(null);
+  const [telemetryConsent, setTelemetryConsent] = useState(true);
 
   useEffect(() => {
     void store.getSettings().then(setSettings);
   }, [store]);
+
+  useEffect(() => {
+    void hasTelemetryDataConsent().then(setTelemetryConsent);
+  }, [settings?.telemetryEnabled]);
 
   const persist = useCallback(
     async (next: Settings) => {
@@ -227,10 +233,18 @@ export function App() {
           <Row t={t} label={M.options.telemetryLabel} hint={M.options.telemetryHint}>
             <Toggle
               t={t}
-              on={settings.telemetryEnabled}
-              onChange={() =>
-                void persist({ ...settings, telemetryEnabled: !settings.telemetryEnabled })
-              }
+              on={settings.telemetryEnabled && telemetryConsent}
+              onChange={() => {
+                void (async () => {
+                  const next = !settings.telemetryEnabled;
+                  if (next) {
+                    const granted = await requestTelemetryDataConsent();
+                    setTelemetryConsent(granted);
+                    if (!granted) return;
+                  }
+                  await persist({ ...settings, telemetryEnabled: next });
+                })();
+              }}
             />
           </Row>
         </Group>

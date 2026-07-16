@@ -1,5 +1,8 @@
 import { defineConfig } from 'wxt';
 
+// Stable Firefox Add-ons ID — must not change after the first AMO submission.
+const FIREFOX_EXTENSION_ID = 'offsend@offsend.io';
+
 // See https://wxt.dev/api/config.html
 export default defineConfig({
   srcDir: 'src',
@@ -11,6 +14,21 @@ export default defineConfig({
     name: '__MSG_extName__',
     description: '__MSG_extDescription__',
     default_locale: 'en',
+    homepage_url: 'https://offsend.io/',
+    // Chrome ignores this block; Firefox AMO requires gecko.id and, for new
+    // extensions, built-in data-collection consent (Firefox 140+).
+    browser_specific_settings: {
+      gecko: {
+        id: FIREFOX_EXTENSION_ID,
+        strict_min_version: '140.0',
+        // AMO requires at least one `required` entry. `none` cannot be combined
+        // with `optional` types (including technicalAndInteraction), so optional
+        // anonymous telemetry is gated by the in-extension Settings toggle only.
+        data_collection_permissions: {
+          required: ['none'],
+        },
+      },
+    },
     // Minimal host permissions: only the AI domains we actively support.
     host_permissions: [
       'https://chatgpt.com/*',

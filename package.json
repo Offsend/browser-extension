@@ -19,6 +19,8 @@
     "build": "wxt build",
     "build:firefox": "wxt build -b firefox",
     "zip": "wxt zip",
+    "zip:firefox": "wxt zip -b firefox",
+    "zip:all": "npm run zip && npm run zip:firefox",
     "compile": "tsc --noEmit",
     "typecheck": "wxt prepare && tsc --noEmit",
     "test": "vitest run",
