@@ -40,7 +40,7 @@ export default defineConfig({
       'https://grok.com/*',
       'https://www.grok.com/*',
     ],
-    permissions: ['storage'],
+    permissions: ['storage', 'alarms'],
     // The on-page overlay renders the extension icon, so it must be readable
     // from the supported host pages.
     web_accessible_resources: [

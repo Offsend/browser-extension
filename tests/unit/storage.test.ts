@@ -57,4 +57,23 @@ describe('SettingsStore', () => {
     expect(reloaded.policy.mode).toBe('auto-mask');
     expect(reloaded.mappingTtlMinutes).toBe(120);
   });
+
+  it('patchSettings merges without clobbering sibling fields', async () => {
+    const store = new SettingsStore(new MemoryBackend());
+    await store.saveSettings({
+      ...DEFAULT_STATE.settings,
+      enabled: true,
+      policy: { mode: 'warn', enabledTypes: null, allowlist: ['keep.me'] },
+      mappingTtlMinutes: 60,
+    });
+
+    const patched = await store.patchSettings({
+      enabled: false,
+      policy: { mode: 'block' },
+    });
+    expect(patched.enabled).toBe(false);
+    expect(patched.policy.mode).toBe('block');
+    expect(patched.policy.allowlist).toEqual(['keep.me']);
+    expect(patched.mappingTtlMinutes).toBe(60);
+  });
 });

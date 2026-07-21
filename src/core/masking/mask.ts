@@ -66,3 +66,18 @@ export function restoreText(masked: string, mappings: readonly MappingEntry[]): 
   }
   return restored;
 }
+
+/**
+ * True when the composer reflects a successful mask write: every placeholder is
+ * present and no original secret value remains. Used before programmatic send.
+ */
+export function isMaskCommitted(
+  current: string,
+  mappings: readonly MappingEntry[],
+): boolean {
+  if (mappings.length === 0) return true;
+  return (
+    mappings.every((m) => current.includes(m.placeholder)) &&
+    mappings.every((m) => !current.includes(m.value))
+  );
+}

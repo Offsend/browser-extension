@@ -1,5 +1,12 @@
 import type { SubmitDecision, SubmitTrigger, Unsubscribe } from '../types';
 
+/**
+ * How bare Enter is treated in the composer.
+ * - `submit` (default): Enter sends; Shift+Enter inserts a newline.
+ * - `newline`: Enter inserts a newline; only Cmd/Ctrl+Enter is treated as send.
+ */
+export type EnterKeyMode = 'submit' | 'newline';
+
 export interface SubmitInterceptionConfig {
   /** The composer element to watch for Enter. */
   readonly composer: HTMLElement;
@@ -10,10 +17,12 @@ export interface SubmitInterceptionConfig {
     readonly trigger: SubmitTrigger;
     readonly event: Event;
   }) => Promise<SubmitDecision>;
+  /** Site-specific Enter semantics. Defaults to `submit`. */
+  readonly enterKey?: EnterKeyMode;
 }
 
 /** Maps a composer element to the function that programmatically sends it. */
-const submitters = new WeakMap<Element, () => void>();
+const submitters = new WeakMap<Element, (trigger?: SubmitTrigger) => void>();
 
 /** Modifier state of an Enter submit, replayed on programmatic resubmit. */
 interface EnterModifiers {
@@ -34,9 +43,13 @@ interface EnterModifiers {
 export function interceptSubmit(cfg: SubmitInterceptionConfig): Unsubscribe {
   const doc = cfg.composer.ownerDocument;
   let reentrant = false;
+  /** Serializes overlapping user submits while async detection runs. */
+  let inflight = false;
   // Some sites bind send to Cmd/Ctrl+Enter; replaying a bare Enter there would
   // insert a newline instead of sending, so the intercepted modifiers are kept.
   let enterModifiers: EnterModifiers = { metaKey: false, ctrlKey: false, altKey: false };
+  /** Last user trigger — used when overlay calls submit without an explicit one. */
+  let lastTrigger: SubmitTrigger = 'button';
 
   function resubmitEnter(): void {
     cfg.composer.focus();
@@ -50,7 +63,8 @@ export function interceptSubmit(cfg: SubmitInterceptionConfig): Unsubscribe {
     );
   }
 
-  function programmaticSubmit(trigger: SubmitTrigger = 'button'): void {
+  function programmaticSubmit(trigger: SubmitTrigger = lastTrigger): void {
+    lastTrigger = trigger;
     reentrant = true;
     try {
       // Enter submits are handled inside the composer (ProseMirror / contenteditable).
@@ -75,15 +89,28 @@ export function interceptSubmit(cfg: SubmitInterceptionConfig): Unsubscribe {
 
   async function handle(trigger: SubmitTrigger, event: Event): Promise<void> {
     if (reentrant) return;
+    // Always stop the native submit; a second click/Enter while detection is
+    // in flight must not leak past us even if we ignore the attempt.
     event.preventDefault();
     event.stopImmediatePropagation();
-    const decision = await cfg.onAttempt({ trigger, event });
-    if (decision.action === 'allow') programmaticSubmit(trigger);
+    if (inflight) return;
+    inflight = true;
+    lastTrigger = trigger;
+    try {
+      const decision = await cfg.onAttempt({ trigger, event });
+      if (decision.action === 'allow') programmaticSubmit(trigger);
+    } finally {
+      inflight = false;
+    }
   }
+
+  const enterKey = cfg.enterKey ?? 'submit';
 
   const onKeydown = (e: Event): void => {
     const ke = e as KeyboardEvent;
     if (ke.key !== 'Enter' || ke.shiftKey || ke.isComposing) return;
+    // Sites where Enter = newline only submit on Cmd/Ctrl+Enter.
+    if (enterKey === 'newline' && !ke.metaKey && !ke.ctrlKey) return;
     enterModifiers = { metaKey: ke.metaKey, ctrlKey: ke.ctrlKey, altKey: ke.altKey };
     void handle('enter', e);
   };
@@ -107,6 +134,6 @@ export function interceptSubmit(cfg: SubmitInterceptionConfig): Unsubscribe {
 }
 
 /** Re-trigger a send for a composer previously wired by {@link interceptSubmit}. */
-export function submitComposer(composer: HTMLElement): void {
-  submitters.get(composer)?.();
+export function submitComposer(composer: HTMLElement, trigger?: SubmitTrigger): void {
+  submitters.get(composer)?.(trigger);
 }

@@ -2,11 +2,35 @@
  * Read/write helpers shared by adapters. Writing must look like real user input
  * so React-controlled composers (textarea or contenteditable/ProseMirror) pick
  * up the change.
+ *
+ * Reading contenteditable text goes through the same text-node index that live
+ * highlighting uses, so submit-time scan and the overlay chip never disagree.
  */
+
+export interface ComposerTextIndex {
+  readonly text: string;
+  readonly nodes: readonly { readonly node: Text; readonly start: number }[];
+}
+
+/**
+ * Concatenated text-node content with per-node start offsets. Detection and
+ * highlight ranges share this exact string so offsets map 1:1 to the DOM.
+ */
+export function indexComposerText(el: HTMLElement): ComposerTextIndex {
+  const walker = el.ownerDocument.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  let text = '';
+  const nodes: { node: Text; start: number }[] = [];
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    const t = n as Text;
+    nodes.push({ node: t, start: text.length });
+    text += t.data;
+  }
+  return { text, nodes };
+}
 
 export function readComposerText(el: HTMLElement): string {
   if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) return el.value;
-  return el.innerText ?? el.textContent ?? '';
+  return indexComposerText(el).text;
 }
 
 export function writeComposerText(el: HTMLElement, text: string): void {

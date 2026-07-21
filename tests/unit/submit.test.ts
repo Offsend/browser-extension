@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { interceptSubmit } from '@/core/adapters/shared/submit';
+import { interceptSubmit, submitComposer } from '@/core/adapters/shared/submit';
 
 const FIXTURE = `
   <main>
@@ -113,6 +113,107 @@ describe('interceptSubmit', () => {
     await Promise.resolve();
 
     expect(decoyClick).not.toHaveBeenCalled();
+    unsub();
+  });
+
+  it('ignores overlapping submits while detection is in flight', async () => {
+    let resolveAttempt!: (d: { action: 'allow' | 'block' }) => void;
+    const attempts = vi.fn(
+      () =>
+        new Promise<{ action: 'allow' | 'block' }>((resolve) => {
+          resolveAttempt = resolve;
+        }),
+    );
+
+    const unsub = interceptSubmit({
+      composer,
+      getSubmitButton: () => sendButton,
+      onAttempt: attempts,
+    });
+
+    const first = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    const second = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    composer.dispatchEvent(first);
+    composer.dispatchEvent(second);
+
+    expect(first.defaultPrevented).toBe(true);
+    expect(second.defaultPrevented).toBe(true);
+    expect(attempts).toHaveBeenCalledTimes(1);
+
+    resolveAttempt({ action: 'block' });
+    await Promise.resolve();
+    unsub();
+  });
+
+  it('submitComposer replays the last user trigger (Enter, not button click)', async () => {
+    const sendClick = vi.fn();
+    sendButton.addEventListener('click', sendClick);
+    let submitted = false;
+    composer.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && !event.defaultPrevented) submitted = true;
+    });
+
+    const unsub = interceptSubmit({
+      composer,
+      getSubmitButton: () => sendButton,
+      onAttempt: async () => ({ action: 'block' }),
+    });
+
+    composer.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    );
+    await Promise.resolve();
+
+    submitComposer(composer);
+    expect(submitted).toBe(true);
+    expect(sendClick).not.toHaveBeenCalled();
+    unsub();
+  });
+
+  it('newline enterKey ignores bare Enter and intercepts Cmd+Enter', async () => {
+    const attempts = vi.fn(async () => ({ action: 'block' as const }));
+    const unsub = interceptSubmit({
+      composer,
+      getSubmitButton: () => sendButton,
+      enterKey: 'newline',
+      onAttempt: attempts,
+    });
+
+    const bare = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    composer.dispatchEvent(bare);
+    expect(bare.defaultPrevented).toBe(false);
+    expect(attempts).not.toHaveBeenCalled();
+
+    const mod = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      metaKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    composer.dispatchEvent(mod);
+    await Promise.resolve();
+    expect(mod.defaultPrevented).toBe(true);
+    expect(attempts).toHaveBeenCalledTimes(1);
+    unsub();
+  });
+
+  it('submitComposer can override the trigger to button', async () => {
+    const sendClick = vi.fn();
+    sendButton.addEventListener('click', sendClick);
+
+    const unsub = interceptSubmit({
+      composer,
+      getSubmitButton: () => sendButton,
+      onAttempt: async () => ({ action: 'block' }),
+    });
+
+    composer.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    );
+    await Promise.resolve();
+
+    submitComposer(composer, 'button');
+    expect(sendClick).toHaveBeenCalled();
     unsub();
   });
 });

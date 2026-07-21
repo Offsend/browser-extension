@@ -1,14 +1,16 @@
 import {
+  CONTRACT_VERSION,
   resolveAdapter,
   type ComposerHandle,
   type FileDecision,
   type SubmitDecision,
+  type SubmitTrigger,
 } from '@/core/adapters';
 import type { DetectionEngine, Finding } from '@/core/detection';
 import { t as i18n } from '@/core/i18n';
 import { intercept, interceptFiles, isAllowlisted, maskReviewedFiles } from '@/core/interceptor';
-import { maskText, type MappingEntry } from '@/core/masking';
-import type { MappingsReply, OffsendMessage } from '@/core/messaging/protocol';
+import { isMaskCommitted, maskText, type MappingEntry } from '@/core/masking';
+import type { MappingsReply, OffsendMessage, OkReply } from '@/core/messaging/protocol';
 import { restoreInDom, restoreInText } from '@/core/restore';
 import { SettingsStore, createBrowserBackend, createEngine } from '@/core/storage';
 import { attachComposerHighlight, type ComposerHighlighter } from '@/ui/highlight';
@@ -38,6 +40,13 @@ export default defineContentScript({
     const store = new SettingsStore(createBrowserBackend(browser.storage.local));
     const host = location.hostname;
     let engine: DetectionEngine = createEngine([]);
+    const contractMismatch = adapter.contractVersion !== CONTRACT_VERSION;
+
+    const warnUnscanned = (names: readonly string[] | undefined) => {
+      if (names && names.length > 0) {
+        overlay.toast(M.toast.unscannedAttachment(names.length));
+      }
+    };
 
     /**
      * Best-effort messaging: the background can be unreachable (asleep,
@@ -54,12 +63,21 @@ export default defineContentScript({
       }
     };
 
-    const saveMappings = (mappings: readonly MappingEntry[], ttlMinutes: number) =>
-      void send({ type: 'save-mappings', mappings: [...mappings], ttlMinutes });
+    const saveMappings = (mappings: readonly MappingEntry[], ttlMinutes: number) => {
+      void send({ type: 'save-mappings', mappings: [...mappings], ttlMinutes }).then((reply) => {
+        if (!(reply as OkReply | undefined)?.ok) {
+          overlay.toast(M.toast.restoreUnavailable);
+        }
+      });
+    };
 
     const restore = async () => {
       const reply = (await send({ type: 'get-mappings' })) as MappingsReply | undefined;
-      const mappings = reply?.mappings ?? [];
+      if (!reply) {
+        overlay.toast(M.toast.restoreUnavailable);
+        return;
+      }
+      const mappings = reply.mappings ?? [];
       const root = adapter.findConversationRoot?.(document) ?? document.body;
       let n = restoreInDom(root, mappings);
       // restoreInDom skips editable nodes by design — the composer is restored
@@ -91,10 +109,7 @@ export default defineContentScript({
       mappings: readonly MappingEntry[],
     ): Promise<boolean> => {
       adapter.writeText(handle, text);
-      const committed = () => {
-        const current = adapter.readText(handle);
-        return mappings.every((m) => current.includes(m.placeholder));
-      };
+      const committed = () => isMaskCommitted(adapter.readText(handle), mappings);
       // Always yield at least one frame so the write commits off the current
       // task, then keep polling for a short budget (~250ms).
       for (let i = 0; i < 15; i++) {
@@ -105,6 +120,15 @@ export default defineContentScript({
     };
 
     let enabled = true;
+    let reviewSession = 0;
+    let pendingFileResolve: ((decision: FileDecision) => void) | null = null;
+
+    const cancelPendingFileReview = () => {
+      if (!pendingFileResolve) return;
+      const resolve = pendingFileResolve;
+      pendingFileResolve = null;
+      resolve({ action: 'block' });
+    };
 
     const wire = (composer: ComposerHandle): (() => void) =>
       adapter.onSubmitAttempt(composer, async (ctx): Promise<SubmitDecision> => {
@@ -112,6 +136,7 @@ export default defineContentScript({
         if (!settings.enabled) return { action: 'allow' };
         const outcome = await intercept(ctx.text, host, settings.policy, engine);
         const ttl = settings.mappingTtlMinutes;
+        const trigger: SubmitTrigger = ctx.trigger;
 
         switch (outcome.kind) {
           case 'allow':
@@ -131,15 +156,19 @@ export default defineContentScript({
             return { action: 'allow' };
           }
 
-          case 'review':
+          case 'review': {
+            cancelPendingFileReview();
+            const sessionId = ++reviewSession;
             overlay.showReview({
+              sessionId,
               findings: outcome.findings,
               text: ctx.text,
               canSendAnyway: outcome.canSendAnyway,
               onMaskSend: async (enabledFindings: readonly Finding[]) => {
+                if (sessionId !== reviewSession) return;
                 if (enabledFindings.length === 0) {
                   overlay.hideReview();
-                  adapter.submit(ctx.composer);
+                  adapter.submit(ctx.composer, trigger);
                   return;
                 }
                 const { masked: finalMasked, mappings: finalMappings } = maskText(
@@ -157,15 +186,20 @@ export default defineContentScript({
                   label: M.toast.restoreAction,
                   onClick: restore,
                 });
-                adapter.submit(ctx.composer);
+                adapter.submit(ctx.composer, trigger);
               },
               onSendAnyway: () => {
+                if (sessionId !== reviewSession) return;
                 overlay.hideReview();
-                adapter.submit(ctx.composer);
+                adapter.submit(ctx.composer, trigger);
               },
-              onCancel: () => overlay.hideReview(),
+              onCancel: () => {
+                if (sessionId !== reviewSession) return;
+                overlay.hideReview();
+              },
             });
             return { action: 'block' };
+          }
         }
       });
 
@@ -176,57 +210,75 @@ export default defineContentScript({
      */
     const wireFiles = (): (() => void) | null =>
       adapter.onFileAttach?.(document, async (ctx): Promise<FileDecision> => {
-        const settings = await store.getSettings();
-        if (!settings.enabled) return { action: 'allow' };
-        const outcome = await interceptFiles(ctx.files, host, settings.policy, engine);
-        const ttl = settings.mappingTtlMinutes;
+        try {
+          const settings = await store.getSettings();
+          if (!settings.enabled) return { action: 'allow' };
+          const outcome = await interceptFiles(ctx.files, host, settings.policy, engine);
+          const ttl = settings.mappingTtlMinutes;
 
-        switch (outcome.kind) {
-          case 'allow':
-            return { action: 'allow' };
+          switch (outcome.kind) {
+            case 'allow':
+              warnUnscanned(outcome.unscannedNames);
+              return { action: 'allow' };
 
-          case 'auto-mask':
-            saveMappings(outcome.mappings, ttl);
-            overlay.toast(M.toast.maskedInAttachment(outcome.findings.length), {
-              label: M.toast.restoreAction,
-              onClick: restore,
-            });
-            return { action: 'replace', files: outcome.files };
-
-          case 'review':
-            return new Promise<FileDecision>((resolve) => {
-              overlay.showReview({
-                findings: outcome.findings,
-                text: outcome.combined,
-                canSendAnyway: outcome.canSendAnyway,
-                confirmLabel: M.overlay.maskAndAttach,
-                bypassLabel: M.overlay.attachAnyway,
-                onMaskSend: (enabledFindings: readonly Finding[]) => {
-                  overlay.hideReview();
-                  if (enabledFindings.length === 0) {
-                    resolve({ action: 'allow' });
-                    return;
-                  }
-                  const next = maskReviewedFiles(outcome, enabledFindings);
-                  // Resolve first: attaching the masked files must not depend
-                  // on the vault save or the toast succeeding.
-                  resolve({ action: 'replace', files: next.files });
-                  saveMappings(next.mappings, ttl);
-                  overlay.toast(M.toast.maskedInAttachment(enabledFindings.length), {
-                    label: M.toast.restoreAction,
-                    onClick: restore,
-                  });
-                },
-                onSendAnyway: () => {
-                  overlay.hideReview();
-                  resolve({ action: 'allow' });
-                },
-                onCancel: () => {
-                  overlay.hideReview();
-                  resolve({ action: 'block' });
-                },
+            case 'auto-mask':
+              saveMappings(outcome.mappings, ttl);
+              overlay.toast(M.toast.maskedInAttachment(outcome.findings.length), {
+                label: M.toast.restoreAction,
+                onClick: restore,
               });
-            });
+              warnUnscanned(outcome.unscannedNames);
+              return { action: 'replace', files: outcome.files };
+
+            case 'review':
+              cancelPendingFileReview();
+              warnUnscanned(outcome.unscannedNames);
+              return new Promise<FileDecision>((resolve) => {
+                pendingFileResolve = resolve;
+                const sessionId = ++reviewSession;
+                overlay.showReview({
+                  sessionId,
+                  findings: outcome.findings,
+                  text: outcome.combined,
+                  canSendAnyway: outcome.canSendAnyway,
+                  confirmLabel: M.overlay.maskAndAttach,
+                  bypassLabel: M.overlay.attachAnyway,
+                  onMaskSend: (enabledFindings: readonly Finding[]) => {
+                    if (sessionId !== reviewSession) return;
+                    pendingFileResolve = null;
+                    overlay.hideReview();
+                    if (enabledFindings.length === 0) {
+                      resolve({ action: 'allow' });
+                      return;
+                    }
+                    const next = maskReviewedFiles(outcome, enabledFindings);
+                    // Resolve first: attaching the masked files must not depend
+                    // on the vault save or the toast succeeding.
+                    resolve({ action: 'replace', files: next.files });
+                    saveMappings(next.mappings, ttl);
+                    overlay.toast(M.toast.maskedInAttachment(enabledFindings.length), {
+                      label: M.toast.restoreAction,
+                      onClick: restore,
+                    });
+                  },
+                  onSendAnyway: () => {
+                    if (sessionId !== reviewSession) return;
+                    pendingFileResolve = null;
+                    overlay.hideReview();
+                    resolve({ action: 'allow' });
+                  },
+                  onCancel: () => {
+                    if (sessionId !== reviewSession) return;
+                    pendingFileResolve = null;
+                    overlay.hideReview();
+                    resolve({ action: 'block' });
+                  },
+                });
+              });
+          }
+        } catch {
+          overlay.toast(M.toast.attachFailed);
+          return { action: 'block' };
         }
       }) ?? null;
 
@@ -256,6 +308,15 @@ export default defineContentScript({
           adapterId: adapter.id,
           status: 'inactive',
           reason: M.health.protectionPaused,
+        });
+        return;
+      }
+      if (contractMismatch) {
+        void send({
+          type: 'report-health',
+          adapterId: adapter.id,
+          status: 'degraded',
+          reason: M.health.adapterOutdated,
         });
         return;
       }
@@ -300,6 +361,7 @@ export default defineContentScript({
         unwire();
         unsubscribeFiles?.();
         unsubscribeFiles = null;
+        cancelPendingFileReview();
         overlay.hideReview();
         reportHealth();
         return;
@@ -317,6 +379,12 @@ export default defineContentScript({
       highlighter?.refresh();
     };
 
+    const rebind = () => {
+      if (!enabled) return;
+      bindComposer(adapter.findComposer(document));
+      reportHealth();
+    };
+
     await syncFromStorage();
     if (enabled) {
       bindComposer(adapter.findComposer(document));
@@ -328,20 +396,37 @@ export default defineContentScript({
       if (area === 'local' && changes['offsend:state']) void syncFromStorage();
     });
 
-    // Re-bind when the site swaps the composer (SPA navigation / re-render),
-    // and keep health fresh so degraded state is never silent.
-    const interval = setInterval(() => {
-      if (!enabled) return;
-      bindComposer(adapter.findComposer(document));
-      reportHealth();
-    }, 3000);
+    // Re-bind when the site swaps the composer (SPA navigation / re-render).
+    let rebindTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRebind = () => {
+      if (rebindTimer !== null) clearTimeout(rebindTimer);
+      rebindTimer = setTimeout(() => {
+        rebindTimer = null;
+        rebind();
+      }, 150);
+    };
+    const observer = new MutationObserver(scheduleRebind);
+    observer.observe(document.documentElement, { childList: true, subtree: true });
 
-    window.addEventListener('pagehide', () => {
+    // Health polling as a fallback when mutations are quiet but the page
+    // still swapped controls (e.g. attribute-only SPA updates).
+    const interval = setInterval(rebind, 3000);
+
+    // bfcache: destroying on every pagehide leaves the restored page unprotected
+    // because content scripts are not reinjected. Only tear down on real unload.
+    window.addEventListener('pagehide', (event) => {
+      if (event.persisted) return;
+      if (rebindTimer !== null) clearTimeout(rebindTimer);
       clearInterval(interval);
+      observer.disconnect();
+      cancelPendingFileReview();
       unwire();
       unsubscribeFiles?.();
       unsubscribeFiles = null;
       overlay.destroy();
+    });
+    window.addEventListener('pageshow', (event) => {
+      if (event.persisted) rebind();
     });
   },
 });

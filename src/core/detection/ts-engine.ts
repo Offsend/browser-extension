@@ -1,6 +1,12 @@
 import { DETECTORS, type Detector } from './detectors';
 import type { DetectionEngine, Finding, ScanOptions } from './types';
 
+/** Default soft budget so custom / pathological regex cannot freeze the UI. */
+export const DEFAULT_SCAN_BUDGET_MS = 50;
+
+/** Cap matches from a single detector to bound ReDoS-ish matchAll loops. */
+export const MAX_MATCHES_PER_DETECTOR = 200;
+
 interface Candidate extends Finding {
   /** Lower = higher confidence (position in DETECTORS). */
   readonly priority: number;
@@ -25,12 +31,20 @@ export class TsEngine implements DetectionEngine {
   async scan(text: string, opts?: ScanOptions): Promise<Finding[]> {
     if (!text) return [];
     const typeFilter = opts?.types ? new Set(opts.types) : null;
+    const budgetMs = opts?.budgetMs ?? DEFAULT_SCAN_BUDGET_MS;
+    const started = performance.now();
+    const timedOut = () => performance.now() - started >= budgetMs;
 
     const candidates: Candidate[] = [];
-    this.detectors.forEach((detector, priority) => {
-      if (typeFilter && !typeFilter.has(detector.type)) return;
+    for (let priority = 0; priority < this.detectors.length; priority++) {
+      if (timedOut()) break;
+      const detector = this.detectors[priority]!;
+      if (typeFilter && !typeFilter.has(detector.type)) continue;
       const re = detector.pattern();
+      let matchCount = 0;
       for (const match of text.matchAll(re)) {
+        if (timedOut() || matchCount >= MAX_MATCHES_PER_DETECTOR) break;
+        matchCount += 1;
         const value = match[0];
         if (match.index === undefined) continue;
         if (detector.validate && !detector.validate(value)) continue;
@@ -43,7 +57,7 @@ export class TsEngine implements DetectionEngine {
           priority,
         });
       }
-    });
+    }
 
     // Greedy resolution: best detector first, then longest match.
     candidates.sort(

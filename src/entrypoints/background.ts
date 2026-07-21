@@ -88,10 +88,29 @@ export default defineBackground(() => {
   };
 
   const getVault = (): Promise<MappingVault> => {
-    vaultPromise ??= loadOrCreateKey(backend).then(
-      (key) => new MappingVault(createIdbRepository(), key),
-    );
+    if (!vaultPromise) {
+      vaultPromise = loadOrCreateKey(backend)
+        .then((key) => new MappingVault(createIdbRepository(), key))
+        .catch((err) => {
+          // Allow a later message to retry instead of sticky-rejecting forever.
+          vaultPromise = null;
+          throw err;
+        });
+    }
     return vaultPromise;
+  };
+
+  const PURGE_ALARM = 'offsend:purge-vault';
+  const scheduleVaultPurge = (): void => {
+    if (!browser.alarms) return;
+    void browser.alarms.create(PURGE_ALARM, { periodInMinutes: 60 });
+  };
+  const purgeVault = (): void => {
+    void getVault()
+      .then((v) => v.purgeExpired())
+      .catch(() => {
+        /* Vault unavailable — next wake will retry. */
+      });
   };
 
   // Count active installs without behaviour: any worker wake-up means the user
@@ -107,13 +126,21 @@ export default defineBackground(() => {
     const settings = await store.getSettings();
     await store.saveSettings(settings);
     applyBadge('inactive');
+    scheduleVaultPurge();
+    purgeVault();
     void pingIfActive();
   });
 
   // Re-assert the default after the MV3 worker is torn down and revived.
   browser.runtime.onStartup.addListener(() => {
     applyBadge('inactive');
+    scheduleVaultPurge();
+    purgeVault();
     void pingIfActive();
+  });
+
+  browser.alarms?.onAlarm.addListener((alarm) => {
+    if (alarm.name === PURGE_ALARM) purgeVault();
   });
 
   browser.runtime.onMessage.addListener(

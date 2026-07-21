@@ -15,6 +15,8 @@ export interface VaultRecord {
 export interface MappingRepository {
   put(record: VaultRecord): Promise<void>;
   getAll(): Promise<VaultRecord[]>;
+  /** Remove records by id (e.g. corrupt ciphertext). */
+  delete(ids: readonly string[]): Promise<void>;
   deleteExpired(now: number): Promise<void>;
   clear(): Promise<void>;
 }

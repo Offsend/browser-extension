@@ -7,7 +7,7 @@ export {
   importKey,
 } from './crypto';
 export { loadOrCreateKey } from './keystore';
-export { MappingVault } from './vault';
+export { MappingVault, MAX_VAULT_RECORDS } from './vault';
 export { createIdbRepository } from './idb-repository';
 export { restoreInDom, restoreInText } from './restore-dom';
 export type { MappingRepository, VaultRecord } from './types';

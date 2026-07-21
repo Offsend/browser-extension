@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TsEngine } from '@/core/detection';
+import { MAX_MATCHES_PER_DETECTOR, TsEngine } from '@/core/detection';
 import { createEngine } from '@/core/storage';
 
 const engine = new TsEngine();
@@ -108,5 +108,19 @@ describe('TsEngine', () => {
     for (let i = 1; i < findings.length; i++) {
       expect(findings[i]!.start).toBeGreaterThanOrEqual(findings[i - 1]!.end);
     }
+  });
+
+  it('skips detectors when the scan budget is already exhausted', async () => {
+    const findings = await engine.scan('mail a@b.com', { budgetMs: 0 });
+    expect(findings).toEqual([]);
+  });
+
+  it('caps matches from a single detector', async () => {
+    const greedy = new TsEngine([
+      { id: 'dot', type: 'custom', pattern: () => /./g },
+    ]);
+    const text = 'x'.repeat(MAX_MATCHES_PER_DETECTOR + 50);
+    const findings = await greedy.scan(text, { budgetMs: 60_000 });
+    expect(findings.length).toBeLessThanOrEqual(MAX_MATCHES_PER_DETECTOR);
   });
 });

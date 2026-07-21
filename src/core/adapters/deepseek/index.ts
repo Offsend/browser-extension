@@ -1,4 +1,4 @@
-import { byContentEditableNear, byControlNear, byRole, bySelector, bySelectorAny } from '../../selectors';
+import { byContentEditableNear, byControlNear, byRole, bySelector } from '../../selectors';
 import { createAdapter } from '../shared/create-adapter';
 
 const DEEPSEEK_SEND_SELECTORS = [
@@ -27,9 +27,10 @@ export const deepseekAdapter = createAdapter({
     bySelector('textarea, div[contenteditable="true"]'),
   ],
   submitButton: [
+    // Stay scoped to the composer — a page-wide aria-disabled match can hit
+    // unrelated icon buttons (sidebar, toolbar) and send the wrong click.
     byControlNear('#chat-input', DEEPSEEK_SEND_SELECTORS),
     byControlNear('textarea', DEEPSEEK_SEND_SELECTORS),
-    bySelectorAny('div[role="button"][aria-disabled]'),
   ],
   conversationRoot: [bySelector('main')],
 });

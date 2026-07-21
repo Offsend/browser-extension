@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/offsend/browser-extension/actions/workflows/ci.yml/badge.svg)](https://github.com/offsend/browser-extension/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-v0.0.2-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/offsend/kaaoodakdpdbdjcbhdbcodfjpfaiaaig)
+[![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-v0.2.2-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/offsend/kaaoodakdpdbdjcbhdbcodfjpfaiaaig)
 
 **Get your prompts AI-ready before you hit send — right inside web AI chats.**
 
@@ -12,34 +12,55 @@ into a web AI chat, Offsend spots API keys, tokens, private keys, and personal d
 **locally**, and lets you mask them **before** a single character leaves your device.
 Changed your mind? One-click **Restore** brings the originals back.
 
-> **Local-first by design.** Your prompts never leave the device for scanning. The
-> network is used only for license, updates, and an optional anonymous "active
-> install" ping (no content, no findings, no sites) — all verifiable with any
-> network filter, and the ping is one toggle away from off.
+> **Local-first by design.** Scanning, masking, and Restore all run on your device.
+> There is no Offsend account, no cloud scan API, and no prompt content in any
+> network request. You can verify that — the source is public, and e2e tests assert
+> secrets never appear in traffic.
 
 ```
-No cloud account · No server-side scanning · No "trust us"
+No cloud account · No server-side scanning · No "trust us" — inspect the code
 ```
 
 ## Install
 
-**[Add Offsend to Chrome](https://chromewebstore.google.com/detail/offsend/kaaoodakdpdbdjcbhdbcodfjpfaiaaig)** — available on the
+**[Add Offsend to Chrome](https://chromewebstore.google.com/detail/offsend/kaaoodakdpdbdjcbhdbcodfjpfaiaaig)** —
 [Chrome Web Store](https://chromewebstore.google.com/detail/offsend/kaaoodakdpdbdjcbhdbcodfjpfaiaaig).
-Firefox build is on the same release pipeline; see [Publishing](#publishing) below.
+Firefox build is on the same release pipeline; see [Publishing](#publishing).
 
 Part of the [Offsend macOS app & CLI](https://offsend.io/) — same local-first
-promise, same detectors, now in your AI chats.
+promise, same idea, now in your AI chats.
+
+## Trust at a glance
+
+| Claim | Reality |
+| --- | --- |
+| Scans your prompts in the cloud? | **No.** Detection runs in the content script / extension process on your machine. |
+| Needs an Offsend account? | **No.** Nothing to sign up for. |
+| Sends findings / site names / prompt text? | **No.** E2e tests fail if a secret appears in any request (page or background). |
+| Stores originals for Restore? | **Yes, locally.** Encrypted (AES-GCM) in IndexedDB, time-limited, never uploaded. |
+| Talks to the network at all? | **Optionally.** At most one anonymous `app.alive` ping/day to TelemetryDeck (EU), opt-out in Settings → Privacy. Off entirely if no telemetry app ID was baked in at build time. |
+| Broad browser permissions? | **No.** Only `storage`, `alarms`, and host access to the AI sites we support. |
+
+**Verify yourself**
+
+1. Read the source — start at [`wxt.config.ts`](wxt.config.ts) (permissions) and [`src/core/telemetry/`](src/core/telemetry/) (the only outbound client code).
+2. Run `npm run test:e2e` — includes a network assert that sensitive values never leave in requests.
+3. Point a network filter (Little Snitch, Proxyman, browser DevTools) at the extension; you should see either nothing or only `nom.telemetrydeck.com` with a tiny anonymous payload.
 
 ## Supported sites
 
 chatgpt.com · claude.ai · gemini.google.com · chat.deepseek.com ·
 perplexity.ai · grok.com
 
+Host permissions match this list exactly — Offsend does not request access to the
+rest of the web. See [`wxt.config.ts`](wxt.config.ts).
+
 ## Why you'll want it
 
-- **Catch secrets before AI sees them.** Emails, phone numbers, API keys, tokens
-  (JWT, Bearer, Slack, Stripe), private keys, database URLs with passwords, cards,
-  IBANs, IPs, UUIDs, and high-entropy strings — detected the moment you hit send.
+- **Catch secrets before AI sees them.** Emails, phones, API keys, tokens
+  (JWT, Bearer, GitHub, Slack, Stripe, OpenAI, AWS), private keys, database URLs
+  with passwords, cards (Luhn), IBANs, IPs, UUIDs, and high-entropy strings —
+  scanned at send time. Full detector list: [`src/core/detection/detectors.ts`](src/core/detection/detectors.ts).
 - **See findings as you type.** Sensitive values are underlined live in the
   composer, with a quiet chip summarising what will be masked on send.
 - **Attachments are covered too.** Files added via the picker, drag-and-drop, or
@@ -50,19 +71,17 @@ perplexity.ai · grok.com
 - **Mask, don't lose meaning.** Sensitive values become stable placeholders like
   `{{API_KEY_1}}`, so your prompt still reads clearly to the AI.
 - **Reversible Restore.** Encrypted, time-limited mappings let you bring originals
-  back — in the conversation and in the composer — the Offsend signature move.
-- **Zero findings, zero friction.** Nothing sensitive in your text? Offsend stays
-  out of your way completely.
-- **Honest about coverage.** If a site changes its layout, Offsend tells you it's
-  degraded instead of pretending you're protected.
-- **Speaks your language.** UI is localised (English and Russian) based on the
-  browser language.
+  back — in the conversation and in the composer.
+- **Zero findings, zero friction.** Nothing sensitive? Offsend stays out of the way.
+- **Honest about coverage.** If a site changes its layout, Offsend reports
+  degraded health instead of pretending you're protected.
+- **Speaks your language.** UI follows the browser language
+  (en, de, es, fr, pt, ru).
 
 ## How it works
 
-Offsend watches the way content actually leaves the page — typing, pasting,
-Enter / Cmd+Enter, the Send button, and file attachments (picker, drag-and-drop,
-paste) — and scans everything at submit time, all on your device:
+Offsend watches how content leaves the page — typing, pasting, Enter / Cmd+Enter,
+the Send button, and file attachments — and scans at submit time, on device:
 
 1. You write or paste a prompt and press Enter (or click Send), or attach a file.
 2. Offsend scans the text (and text-like files) locally for sensitive values.
@@ -71,9 +90,45 @@ paste) — and scans everything at submit time, all on your device:
    auto-mask handle it with a quiet toast.
 5. Masked values are saved as encrypted, TTL'd mappings so **Restore** can undo it.
 
-Everything runs in the browser. Sensitive content is never uploaded for scanning —
-the same promise as the desktop app, enforced by tests that assert nothing sensitive
-hits the network.
+Sensitive content is never uploaded for scanning. The same promise is enforced by
+tests that assert nothing sensitive hits the network.
+
+## Permissions (why each one)
+
+Declared in [`wxt.config.ts`](wxt.config.ts):
+
+| Permission | Why |
+| --- | --- |
+| `storage` | Settings, policy, and a random telemetry id (if telemetry is on). |
+| `alarms` | Schedule the optional daily active-install ping. |
+| Host access to supported AI sites only | Inject the content script, overlay, and live highlight on those chats. |
+| `web_accessible_resources` → icon PNGs | Render the Offsend icon inside the on-page overlay. |
+
+No `tabs`, no `<all_urls>`, no clipboard, no webRequest, no nativeMessaging,
+no identity / OAuth. Firefox declares `data_collection_permissions.required: ['none']`.
+
+## What stays on your device
+
+| Data | Where | Notes |
+| --- | --- | --- |
+| Settings & masking policy | `browser.storage.local` | Under your control in Options. |
+| Restore mappings (original ↔ placeholder) | IndexedDB, **AES-GCM encrypted** | TTL'd; capped (~100 batches); key created locally via WebCrypto. |
+| Live prompt text / findings | Memory in the page / content script | Never persisted as plaintext for Restore; never sent to Offsend. |
+| Optional anon install id | `browser.storage.local` | Random UUID, **SHA-256 hashed before any ping**; not linked to your identity. |
+
+## Network profile
+
+The extension code itself initiates network traffic only for optional telemetry:
+
+| Destination | When | Payload |
+| --- | --- | --- |
+| `https://nom.telemetrydeck.com/v2/` | At most ~once per day, if telemetry is enabled **and** a public TelemetryDeck app ID was set at build time **and** the user has not opted out | `{ appID, clientUser: sha256(localUuid), type: "app.alive" }` |
+
+- **Never included:** prompt text, findings, masked values, URLs of AI chats, site names.
+- **Browser store updates** (Chrome / Firefox) are handled by the browser, not by Offsend application code.
+- There is **no license server and no Offsend backend** in this repository.
+
+Details and opt-out: [Telemetry](#telemetry).
 
 ## Architecture
 
@@ -83,7 +138,7 @@ src/
     adapters/    # SiteAdapter contract + registry (one file per AI site)
     badge/       # toolbar-icon traffic light (health → colour + tooltip)
     detection/   # DetectionEngine (TS engine now, shared WASM later)
-    i18n/        # typed message catalogs (en, ru)
+    i18n/        # typed message catalogs (en, de, es, fr, pt, ru)
     interceptor/ # pure submit/file decisions (allow / auto-mask / review)
     masking/     # placeholders + reversible mapping
     messaging/   # content ↔ background protocol
@@ -116,8 +171,8 @@ npm run dev:firefox  # Firefox dev build
 ```bash
 npm run lint
 npm run typecheck
-npm test
-npm run test:e2e
+npm test             # Vitest unit + adapter tests
+npm run test:e2e     # Playwright fixtures + network leak assert
 npm run build
 ```
 
@@ -147,9 +202,6 @@ npm run zip:all      # both
 Automated submission (after secrets are configured): GitHub Actions → **Release** workflow.
 Initialize store credentials once with `npx wxt submit init`.
 
-Chrome Web Store long description (use domains, not brand-name lists — avoids keyword-spam
-rejections): [`store-listing.en.txt`](store-listing.en.txt).
-
 **GitHub secrets for Firefox:** `FIREFOX_EXTENSION_ID` (`offsend@offsend.io`), `FIREFOX_JWT_ISSUER`, `FIREFOX_JWT_SECRET`
 
 ## Load unpacked (Chrome)
@@ -172,12 +224,16 @@ ping per day to [TelemetryDeck](https://telemetrydeck.com/) (EU-hosted,
 cookieless). The payload is only an app ID, a locally-hashed random id, and the
 fixed event `app.alive` — never prompt content, findings, or which AI site you
 use. The id is a random UUID stored on-device and SHA-256 hashed before it
-leaves; TelemetryDeck hashes it again server-side. Counting is off entirely until
-a public TelemetryDeck app ID is supplied at build time:
+leaves; TelemetryDeck hashes it again server-side.
+
+Counting is a hard no-op until a public TelemetryDeck app ID is supplied at build
+time — no ID means **zero** telemetry requests:
 
 ```bash
 WXT_TELEMETRY_APP_ID=AAAA-BBBB-CCCC npm run build   # .env or a CI secret also work
 ```
+
+Implementation: [`src/core/telemetry/`](src/core/telemetry/).
 
 ## Security
 
@@ -190,4 +246,4 @@ Licensed under the [Apache License 2.0](LICENSE).
 
 ---
 
-Part of [Offsend](https://offsend.io/)
+Part of [Offsend](https://offsend.io/) · Source: [github.com/offsend/browser-extension](https://github.com/offsend/browser-extension)

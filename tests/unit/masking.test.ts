@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TsEngine } from '@/core/detection';
-import { maskText, restoreText } from '@/core/masking';
+import { isMaskCommitted, maskText, restoreText } from '@/core/masking';
 
 const engine = new TsEngine();
 
@@ -35,6 +35,16 @@ describe('masking', () => {
     const findings = await engine.scan(text);
     const { masked, mappings } = maskText(text, findings);
     expect(restoreText(masked, mappings)).toBe(text);
+  });
+
+  it('isMaskCommitted requires placeholders present and originals gone', () => {
+    const mappings = [
+      { placeholder: '{{EMAIL_1_aa}}', value: 'a@x.com', type: 'email' as const },
+    ];
+    expect(isMaskCommitted('mail {{EMAIL_1_aa}}', mappings)).toBe(true);
+    expect(isMaskCommitted('mail a@x.com', mappings)).toBe(false);
+    expect(isMaskCommitted('mail {{EMAIL_1_aa}} and a@x.com', mappings)).toBe(false);
+    expect(isMaskCommitted('mail {{EMAIL_1_aa}}', [])).toBe(true);
   });
 
   it('is a no-op when there are no findings', () => {

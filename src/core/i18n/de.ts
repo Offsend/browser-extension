@@ -32,6 +32,7 @@ export const de: Messages = {
   },
 
   overlay: {
+    reviewAriaLabel: 'Offsend-Prüfung',
     sensitiveFound: (n) => `${n} sensible ${values(n)} gefunden`,
     maskAndSend: 'Maskieren & senden',
     sendAnyway: 'Trotzdem senden',
@@ -47,6 +48,12 @@ export const de: Messages = {
     restored: (n) => `${n} ${values(n)} wiederhergestellt`,
     nothingToRestore: 'Nichts wiederherzustellen',
     maskingFailed: 'Maskierung fehlgeschlagen — Nachricht nicht gesendet',
+    restoreUnavailable: 'Maskiert, aber Wiederherstellen ist gerade nicht verfügbar',
+    attachFailed: 'Anhang konnte nicht geprüft werden — Datei blockiert',
+    unscannedAttachment: (n) =>
+      n === 1
+        ? '1 Anhang konnte nicht geprüft werden — unverändert angehängt'
+        : `${n} Anhänge konnten nicht geprüft werden — unverändert angehängt`,
     restoreAction: 'Wiederherstellen',
   },
 
@@ -54,6 +61,7 @@ export const de: Messages = {
     protectionPaused: 'Schutz pausiert',
     promptInputNotFound: 'Eingabefeld nicht gefunden',
     sendButtonNotFound: 'Senden-Schaltfläche nicht gefunden',
+    adapterOutdated: 'Erweiterung aktualisieren — Schutz möglicherweise unvollständig',
   },
 
   badge: {

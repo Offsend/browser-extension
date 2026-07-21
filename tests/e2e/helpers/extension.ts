@@ -7,15 +7,21 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const EXTENSION_PATH = path.join(ROOT, '.output/chrome-mv3');
 
+/** Keep in sync with `SCHEMA_VERSION` in src/core/storage/schema.ts. */
+const SCHEMA_VERSION = 4;
+
 interface ExtensionState {
   schemaVersion: number;
   settings: {
+    enabled: boolean;
     policy: {
       mode: 'warn' | 'auto-mask' | 'block';
       enabledTypes: null;
       allowlist: string[];
     };
     mappingTtlMinutes: number;
+    telemetryEnabled: boolean;
+    customRules: [];
   };
 }
 
@@ -49,33 +55,39 @@ export async function setExtensionPolicyMode(
   mode: 'warn' | 'auto-mask' | 'block',
 ): Promise<void> {
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
-  await worker.evaluate(async (nextMode) => {
-    const chromeApi = (globalThis as unknown as { chrome: ChromeStorageLike }).chrome;
-    const state: ExtensionState = {
-      schemaVersion: 1,
-      settings: {
-        policy: { mode: nextMode, enabledTypes: null, allowlist: [] },
-        mappingTtlMinutes: 60,
-      },
-    };
-    await new Promise<void>((resolve, reject) => {
-      chromeApi.storage.local.set({ 'offsend:state': state }, () => {
-        const err = chromeApi.runtime.lastError;
-        if (err) reject(new Error(err.message));
-        else resolve();
+  await worker.evaluate(
+    async ({ nextMode, schemaVersion }) => {
+      const chromeApi = (globalThis as unknown as { chrome: ChromeStorageLike }).chrome;
+      const state = {
+        schemaVersion,
+        settings: {
+          enabled: true,
+          policy: { mode: nextMode, enabledTypes: null, allowlist: [] as string[] },
+          mappingTtlMinutes: 60,
+          telemetryEnabled: false,
+          customRules: [] as const,
+        },
+      };
+      await new Promise<void>((resolve, reject) => {
+        chromeApi.storage.local.set({ 'offsend:state': state }, () => {
+          const err = chromeApi.runtime.lastError;
+          if (err) reject(new Error(err.message));
+          else resolve();
+        });
       });
-    });
-    const saved = await new Promise<ExtensionState | undefined>((resolve, reject) => {
-      chromeApi.storage.local.get('offsend:state', (result) => {
-        const err = chromeApi.runtime.lastError;
-        if (err) reject(new Error(err.message));
-        else resolve(result['offsend:state']);
+      const saved = await new Promise<ExtensionState | undefined>((resolve, reject) => {
+        chromeApi.storage.local.get('offsend:state', (result) => {
+          const err = chromeApi.runtime.lastError;
+          if (err) reject(new Error(err.message));
+          else resolve(result['offsend:state']);
+        });
       });
-    });
-    if (saved?.settings?.policy?.mode !== nextMode) {
-      throw new Error(`Failed to persist policy mode: ${nextMode}`);
-    }
-  }, mode);
+      if (saved?.settings?.policy?.mode !== nextMode) {
+        throw new Error(`Failed to persist policy mode: ${nextMode}`);
+      }
+    },
+    { nextMode: mode, schemaVersion: SCHEMA_VERSION },
+  );
 }
 
 export async function newFixturePage(

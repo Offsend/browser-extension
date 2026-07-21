@@ -69,6 +69,30 @@ describe('attachComposerHighlight', () => {
     expect(seen.at(-1)?.map((f) => f.value)).toEqual(['a@b.com']);
   });
 
+  it('scans the same string readComposerText would return', async () => {
+    const { readComposerText } = await import('@/core/adapters/shared/composer');
+    const el = document.createElement('div');
+    el.setAttribute('contenteditable', 'true');
+    el.innerHTML = '<p>send to </p><p>a@b.com</p>';
+    document.body.appendChild(el);
+    attachComposerHighlight(el, scan, () => {});
+    await flush();
+
+    expect(scan).toHaveBeenCalledWith(readComposerText(el));
+  });
+
+  it('detach removes page-injected highlight style', async () => {
+    const style = document.createElement('style');
+    style.id = 'offsend-highlight-style';
+    document.head.appendChild(style);
+    const el = document.createElement('div');
+    el.setAttribute('contenteditable', 'true');
+    document.body.appendChild(el);
+    const h = attachComposerHighlight(el, scan, () => {});
+    h.detach();
+    expect(document.getElementById('offsend-highlight-style')).toBeNull();
+  });
+
   it('detach clears findings and stops listening', async () => {
     const el = document.createElement('textarea');
     document.body.appendChild(el);

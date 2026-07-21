@@ -82,8 +82,9 @@ export interface SiteAdapter {
    * resolves an overlay, and to re-trigger a submit the interceptor prevented
    * while it ran async detection. Implementations must guard against this
    * triggering their own `onSubmitAttempt` again (re-entrancy).
+   * When `trigger` is omitted, the last intercepted user trigger is replayed.
    */
-  submit(composer: ComposerHandle): void;
+  submit(composer: ComposerHandle, trigger?: SubmitTrigger): void;
 
   /**
    * Optional: the element that contains the conversation (assistant replies).

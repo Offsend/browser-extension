@@ -1,3 +1,7 @@
 export type { DetectionEngine, Finding, FindingType, ScanOptions } from './types';
 export { DETECTORS, type Detector } from './detectors';
-export { TsEngine } from './ts-engine';
+export {
+  TsEngine,
+  DEFAULT_SCAN_BUDGET_MS,
+  MAX_MATCHES_PER_DETECTOR,
+} from './ts-engine';

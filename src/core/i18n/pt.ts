@@ -32,6 +32,7 @@ export const pt: Messages = {
   },
 
   overlay: {
+    reviewAriaLabel: 'Revisão Offsend',
     sensitiveFound: (n) => `${n} ${values(n)} sensíve${n === 1 ? 'l' : 'is'} encontrado${n === 1 ? '' : 's'}`,
     maskAndSend: 'Mascarar e enviar',
     sendAnyway: 'Enviar mesmo assim',
@@ -47,6 +48,12 @@ export const pt: Messages = {
     restored: (n) => `${n} ${values(n)} restaurado${n === 1 ? '' : 's'}`,
     nothingToRestore: 'Nada para restaurar',
     maskingFailed: 'Falha ao mascarar — mensagem não enviada',
+    restoreUnavailable: 'Mascarado, mas Restaurar está indisponível agora',
+    attachFailed: 'Não foi possível analisar o anexo — arquivo bloqueado',
+    unscannedAttachment: (n) =>
+      n === 1
+        ? '1 anexo não pôde ser analisado — anexado como está'
+        : `${n} anexos não puderam ser analisados — anexados como estão`,
     restoreAction: 'Restaurar',
   },
 
@@ -54,6 +61,7 @@ export const pt: Messages = {
     protectionPaused: 'Proteção pausada',
     promptInputNotFound: 'Campo de entrada não encontrado',
     sendButtonNotFound: 'Botão de envio não encontrado',
+    adapterOutdated: 'Atualize a extensão — a proteção pode estar incompleta',
   },
 
   badge: {

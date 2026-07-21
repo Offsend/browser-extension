@@ -4,7 +4,7 @@
     "description": "Extension name shown in the store and browser UI."
   },
   "extDescription": {
-    "message": "Détecte les clés API, mots de passe et autres données sensibles dans les prompts de chat IA et les masque localement dans votre navigateur avant l'envoi.",
+    "message": "Masque les clés API, mots de passe et données personnelles dans les prompts de chat IA — localement dans le navigateur avant l'envoi.",
     "description": "Extension description shown in the store and browser UI."
   }
 }

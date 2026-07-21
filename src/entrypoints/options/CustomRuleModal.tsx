@@ -3,20 +3,17 @@ import {
   getCustomRuleWarnings,
   validateCustomRule,
   type CustomRule,
-  type CustomRuleValidationError,
   type CustomRuleWarning,
 } from '@/core/storage';
 import { Button, Row, TextArea, TextInput, type Theme } from '@/ui';
 
-const M = i18n();
-
-const VALIDATION_ERROR_LABEL: Record<CustomRuleValidationError, string> = M.rules.error;
-
-const WARNING_LABEL: Record<CustomRuleWarning, string> = M.rules.warning;
-
 function fieldError(rule: CustomRule, field: 'name' | 'pattern' | 'flags'): string | null {
   const error = validateCustomRule(rule).errors[field];
-  return error ? VALIDATION_ERROR_LABEL[error] : null;
+  return error ? i18n().rules.error[error] : null;
+}
+
+function warningLabel(warning: CustomRuleWarning): string {
+  return i18n().rules.warning[warning];
 }
 
 interface CustomRuleModalProps {
@@ -38,6 +35,7 @@ export function CustomRuleModal({
   onSubmit,
   onRemove,
 }: CustomRuleModalProps) {
+  const M = i18n();
   const canSubmit = validateCustomRule(draft).ok;
   const nameError = fieldError(draft, 'name');
   const patternError = fieldError(draft, 'pattern');
@@ -127,7 +125,7 @@ export function CustomRuleModal({
                     color: t.amberText,
                   }}
                 >
-                  {WARNING_LABEL[warning]}
+                  {warningLabel(warning)}
                 </span>
               ))}
           </label>

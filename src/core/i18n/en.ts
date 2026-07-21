@@ -38,6 +38,7 @@ export const en = {
   },
 
   overlay: {
+    reviewAriaLabel: 'Offsend review',
     sensitiveFound: (n: number) => `${n} sensitive ${values(n)} found`,
     maskAndSend: 'Mask & send',
     sendAnyway: 'Send anyway',
@@ -53,6 +54,12 @@ export const en = {
     restored: (n: number) => `Restored ${n} ${values(n)}`,
     nothingToRestore: 'Nothing to restore',
     maskingFailed: 'Masking failed — message not sent',
+    restoreUnavailable: 'Masked, but Restore is unavailable right now',
+    attachFailed: 'Could not scan attachment — file blocked',
+    unscannedAttachment: (n: number) =>
+      n === 1
+        ? '1 attachment could not be scanned — attached as-is'
+        : `${n} attachments could not be scanned — attached as-is`,
     restoreAction: 'Restore',
   },
 
@@ -60,6 +67,7 @@ export const en = {
     protectionPaused: 'Protection paused',
     promptInputNotFound: 'Prompt input not found',
     sendButtonNotFound: 'Send button not found',
+    adapterOutdated: 'Extension update required — protection may be incomplete',
   },
 
   badge: {

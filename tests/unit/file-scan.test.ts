@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { TsEngine } from '@/core/detection';
-import { interceptFiles, isScannableFile, maskReviewedFiles } from '@/core/interceptor';
+import {
+  interceptFiles,
+  isScannableFile,
+  maskReviewedFiles,
+  MAX_SCAN_BYTES,
+} from '@/core/interceptor';
 import type { Policy } from '@/core/storage';
 
 const engine = new TsEngine();
@@ -37,10 +42,33 @@ describe('interceptFiles', () => {
     expect(out.kind).toBe('allow');
   });
 
-  it('allows unscannable files even if they would contain secrets', async () => {
+  it('allows unscannable files but surfaces their names for a UI warn', async () => {
     const binary = new File(['mail a@b.com'], 'blob.bin', { type: 'application/octet-stream' });
     const out = await interceptFiles([binary], 'x.com', policy(), engine);
     expect(out.kind).toBe('allow');
+    if (out.kind !== 'allow') return;
+    expect(out.unscannedNames).toEqual(['blob.bin']);
+  });
+
+  it('rejects oversized text files as unscannable', () => {
+    const big = new File(['x'.repeat(MAX_SCAN_BYTES + 1)], 'big.txt', { type: 'text/plain' });
+    expect(isScannableFile(big)).toBe(false);
+  });
+
+  it('reports unscanned names alongside a review for mixed batches', async () => {
+    const out = await interceptFiles(
+      [
+        textFile('leaky.txt', 'mail a@b.com'),
+        new File([new Uint8Array(8)], 'pic.png', { type: 'image/png' }),
+      ],
+      'x.com',
+      policy(),
+      engine,
+    );
+    expect(out.kind).toBe('review');
+    if (out.kind !== 'review') return;
+    expect(out.unscannedNames).toEqual(['pic.png']);
+    expect(out.findings).toHaveLength(1);
   });
 
   it('allows everything on allowlisted hosts', async () => {

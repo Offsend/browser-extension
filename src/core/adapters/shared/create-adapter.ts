@@ -3,7 +3,7 @@ import { createCascadeResolver, type SelectorStrategy } from '../../selectors';
 import { CONTRACT_VERSION, type SiteAdapter, type SubmitContext } from '../types';
 import { readComposerText, writeComposerText } from './composer';
 import { interceptFileAttach } from './file-attach';
-import { interceptSubmit, submitComposer } from './submit';
+import { interceptSubmit, submitComposer, type EnterKeyMode } from './submit';
 
 export interface AdapterConfig {
   readonly id: string;
@@ -14,6 +14,11 @@ export interface AdapterConfig {
   readonly submitButton: readonly SelectorStrategy<HTMLElement>[];
   /** Optional conversation-container strategies (Restore scope). */
   readonly conversationRoot?: readonly SelectorStrategy<HTMLElement>[];
+  /**
+   * Enter key semantics. Default `submit` (Enter sends). Use `newline` when the
+   * site treats bare Enter as a line break and only Cmd/Ctrl+Enter sends.
+   */
+  readonly enterKey?: EnterKeyMode;
 }
 
 /**
@@ -62,6 +67,7 @@ export function createAdapter(cfg: AdapterConfig): SiteAdapter {
       return interceptSubmit({
         composer: composer.element,
         getSubmitButton: () => resolveSubmitButton(composer.element),
+        enterKey: cfg.enterKey,
         onAttempt: async ({ trigger, event }) => {
           const ctx: SubmitContext = {
             composer,
@@ -76,7 +82,7 @@ export function createAdapter(cfg: AdapterConfig): SiteAdapter {
 
     readText: (composer) => readComposerText(composer.element),
     writeText: (composer, text) => writeComposerText(composer.element, text),
-    submit: (composer) => submitComposer(composer.element),
+    submit: (composer, trigger) => submitComposer(composer.element, trigger),
 
     onFileAttach: (root, handler) =>
       interceptFileAttach(root, handler, {

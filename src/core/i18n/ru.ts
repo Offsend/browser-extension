@@ -41,6 +41,7 @@ export const ru: Messages = {
   },
 
   overlay: {
+    reviewAriaLabel: 'Проверка Offsend',
     sensitiveFound: (n) =>
       `Найдено ${n} ${plural(n, 'чувствительное', 'чувствительных', 'чувствительных')} ${values(n)}`,
     maskAndSend: 'Замаскировать и отправить',
@@ -57,6 +58,12 @@ export const ru: Messages = {
     restored: (n) => `Восстановлено ${n} ${values(n)}`,
     nothingToRestore: 'Нечего восстанавливать',
     maskingFailed: 'Не удалось замаскировать — сообщение не отправлено',
+    restoreUnavailable: 'Замаскировано, но Restore сейчас недоступен',
+    attachFailed: 'Не удалось проверить вложение — файл заблокирован',
+    unscannedAttachment: (n) =>
+      n === 1
+        ? '1 вложение не удалось проверить — прикреплено как есть'
+        : `${n} вложения не удалось проверить — прикреплены как есть`,
     restoreAction: 'Восстановить',
   },
 
@@ -64,6 +71,7 @@ export const ru: Messages = {
     protectionPaused: 'Защита приостановлена',
     promptInputNotFound: 'Поле ввода не найдено',
     sendButtonNotFound: 'Кнопка отправки не найдена',
+    adapterOutdated: 'Нужно обновить расширение — защита может быть неполной',
   },
 
   badge: {

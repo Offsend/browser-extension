@@ -4,9 +4,9 @@ import { t as i18n } from '@/core/i18n';
 import { maskText } from '@/core/masking';
 import { Badge, Button, Checkbox, FONT_MONO, useTheme, type Theme } from '@/ui';
 
-const M = i18n();
-
 export interface ReviewState {
+  /** Stable id so React remounts the card (and resets toggles) per session. */
+  readonly sessionId?: number;
   readonly findings: readonly Finding[];
   /** Original, unmasked prompt text — used to preview masking as toggles change. */
   readonly text: string;
@@ -16,8 +16,8 @@ export interface ReviewState {
   /** Bypass action label; defaults to "Send anyway". */
   readonly bypassLabel?: string;
   /** Called with only the findings the user left enabled. */
-  readonly onMaskSend: (findings: readonly Finding[]) => void;
-  readonly onSendAnyway: () => void;
+  readonly onMaskSend: (findings: readonly Finding[]) => void | Promise<void>;
+  readonly onSendAnyway: () => void | Promise<void>;
   readonly onCancel: () => void;
 }
 
@@ -33,8 +33,6 @@ export interface OverlayState {
   /** Findings detected live while typing (empty → chip hidden). */
   readonly live: readonly Finding[];
 }
-
-const TYPE_LABEL: Record<FindingType, string> = M.type;
 
 /** Same value+type always share one placeholder, so they're toggled as a group. */
 function findingKey(f: Finding): string {
@@ -64,9 +62,11 @@ function truncate(value: string, max = 40): string {
 }
 
 function ReviewCard({ t, review }: { t: Theme; review: ReviewState }) {
+  const M = i18n();
   const total = review.findings.length;
   const groups = useMemo(() => groupFindings(review.findings), [review.findings]);
   const [disabledKeys, setDisabledKeys] = useState<ReadonlySet<string>>(new Set());
+  const [busy, setBusy] = useState(false);
   const enabledFindings = useMemo(
     () => review.findings.filter((f) => !disabledKeys.has(findingKey(f))),
     [review.findings, disabledKeys],
@@ -77,6 +77,7 @@ function ReviewCard({ t, review }: { t: Theme; review: ReviewState }) {
   );
 
   const toggle = (key: string) => {
+    if (busy) return;
     setDisabledKeys((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
@@ -85,10 +86,16 @@ function ReviewCard({ t, review }: { t: Theme; review: ReviewState }) {
     });
   };
 
+  const run = (action: () => void | Promise<void>) => {
+    if (busy) return;
+    setBusy(true);
+    void Promise.resolve(action()).finally(() => setBusy(false));
+  };
+
   return (
     <div
       role="dialog"
-      aria-label="Offsend review"
+      aria-label={M.overlay.reviewAriaLabel}
       style={{
         width: 360,
         background: t.card,
@@ -129,7 +136,7 @@ function ReviewCard({ t, review }: { t: Theme; review: ReviewState }) {
             >
               <Checkbox t={t} on={on} onChange={() => toggle(g.key)} />
               <Badge t={t} tone={on ? 'warn' : 'neutral'}>
-                {TYPE_LABEL[g.type]}
+                {M.type[g.type]}
                 {g.count > 1 ? ` ×${g.count}` : ''}
               </Badge>
               <span
@@ -173,15 +180,27 @@ function ReviewCard({ t, review }: { t: Theme; review: ReviewState }) {
       </pre>
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        <Button t={t} variant="ghost" sm onClick={review.onCancel}>
+        <Button t={t} variant="ghost" sm disabled={busy} onClick={review.onCancel}>
           {M.overlay.cancel}
         </Button>
         {review.canSendAnyway && (
-          <Button t={t} variant="outline" sm onClick={review.onSendAnyway}>
+          <Button
+            t={t}
+            variant="outline"
+            sm
+            disabled={busy}
+            onClick={() => run(review.onSendAnyway)}
+          >
             {review.bypassLabel ?? M.overlay.sendAnyway}
           </Button>
         )}
-        <Button t={t} variant="primary" sm onClick={() => review.onMaskSend(enabledFindings)}>
+        <Button
+          t={t}
+          variant="primary"
+          sm
+          disabled={busy}
+          onClick={() => run(() => review.onMaskSend(enabledFindings))}
+        >
           {review.confirmLabel ?? M.overlay.maskAndSend}
         </Button>
       </div>
@@ -191,13 +210,12 @@ function ReviewCard({ t, review }: { t: Theme; review: ReviewState }) {
 
 /** Compact live indicator: what will be caught if the user sends right now. */
 function LiveChip({ t, findings }: { t: Theme; findings: readonly Finding[] }) {
-  const summary = useMemo(() => {
-    const counts = new Map<FindingType, number>();
-    for (const f of findings) counts.set(f.type, (counts.get(f.type) ?? 0) + 1);
-    return [...counts.entries()]
-      .map(([type, n]) => (n > 1 ? `${TYPE_LABEL[type]} ×${n}` : TYPE_LABEL[type]))
-      .join(', ');
-  }, [findings]);
+  const M = i18n();
+  const counts = new Map<FindingType, number>();
+  for (const f of findings) counts.set(f.type, (counts.get(f.type) ?? 0) + 1);
+  const summary = [...counts.entries()]
+    .map(([type, n]) => (n > 1 ? `${M.type[type]} ×${n}` : M.type[type]))
+    .join(', ');
 
   return (
     <div
@@ -285,7 +303,13 @@ export function Overlay({ state }: { state: OverlayState }) {
         maxWidth: 360,
       }}
     >
-      {state.review && <ReviewCard t={t} review={state.review} />}
+      {state.review && (
+        <ReviewCard
+          key={state.review.sessionId ?? 'review'}
+          t={t}
+          review={state.review}
+        />
+      )}
       {!state.review && state.live.length > 0 && <LiveChip t={t} findings={state.live} />}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
         {state.toasts.map((toast) => (

@@ -37,11 +37,12 @@ export function mountOverlay(doc: Document = document): OverlayController {
   const root = createRoot(container);
   let state: OverlayState = { review: null, toasts: [], live: [] };
   let nextToastId = 1;
+  let nextReviewSession = 1;
   const timers = new Set<ReturnType<typeof setTimeout>>();
 
   const render = () => root.render(<Overlay state={state} />);
-  const set = (next: Partial<OverlayState>) => {
-    state = { ...state, ...next };
+  const set = (fn: (prev: OverlayState) => OverlayState) => {
+    state = fn(state);
     render();
   };
 
@@ -49,20 +50,29 @@ export function mountOverlay(doc: Document = document): OverlayController {
 
   return {
     showReview(review) {
-      set({ review });
+      set((prev) => ({
+        ...prev,
+        review: { ...review, sessionId: review.sessionId ?? nextReviewSession++ },
+      }));
     },
     hideReview() {
-      set({ review: null });
+      set((prev) => ({ ...prev, review: null }));
     },
     setLiveFindings(findings) {
-      set({ live: findings });
+      set((prev) => ({ ...prev, live: findings }));
     },
     toast(text, action) {
       const id = nextToastId++;
-      set({ toasts: [...state.toasts, { id, text, action }] });
+      set((prev) => ({
+        ...prev,
+        toasts: [...prev.toasts, { id, text, action }],
+      }));
       const timer = setTimeout(
         () => {
-          set({ toasts: state.toasts.filter((t) => t.id !== id) });
+          set((prev) => ({
+            ...prev,
+            toasts: prev.toasts.filter((t) => t.id !== id),
+          }));
           timers.delete(timer);
         },
         action ? 8000 : 3500,

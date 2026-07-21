@@ -5,7 +5,7 @@ import type { Policy } from '../storage';
 import { isAllowlisted } from './interceptor';
 
 /** Attachments larger than this are passed through unscanned. */
-const MAX_SCAN_BYTES = 2 * 1024 * 1024;
+export const MAX_SCAN_BYTES = 2 * 1024 * 1024;
 
 const TEXT_MIME = new Set([
   'application/json',
@@ -47,14 +47,18 @@ export interface FileFindingEntry {
  * Decision for a batch of attached files. `review.combined` concatenates the
  * offending files (with `--- name ---` headers) so the existing review overlay
  * can preview masking; finding offsets are relative to that combined text.
+ *
+ * `unscannedNames` lists attachments we could not scan (binary, oversized, …)
+ * so the UI can warn instead of silently allowing them.
  */
 export type FileInterceptOutcome =
-  | { readonly kind: 'allow' }
+  | { readonly kind: 'allow'; readonly unscannedNames?: readonly string[] }
   | {
       readonly kind: 'auto-mask';
       readonly files: readonly File[];
       readonly mappings: readonly MappingEntry[];
       readonly findings: readonly Finding[];
+      readonly unscannedNames?: readonly string[];
     }
   | {
       readonly kind: 'review';
@@ -63,6 +67,7 @@ export type FileInterceptOutcome =
       readonly findings: readonly Finding[];
       readonly entries: readonly FileFindingEntry[];
       readonly canSendAnyway: boolean;
+      readonly unscannedNames?: readonly string[];
     };
 
 function maskedCopy(original: File, maskedText: string): File {
@@ -70,6 +75,13 @@ function maskedCopy(original: File, maskedText: string): File {
     type: original.type,
     lastModified: original.lastModified,
   });
+}
+
+function withUnscanned<T extends object>(
+  outcome: T,
+  unscannedNames: readonly string[],
+): T & { unscannedNames?: readonly string[] } {
+  return unscannedNames.length > 0 ? { ...outcome, unscannedNames } : outcome;
 }
 
 /**
@@ -95,6 +107,10 @@ export async function interceptFiles(
     }),
   );
 
+  const unscannedNames = files
+    .filter((_, i) => texts[i] === null)
+    .map((file) => file.name);
+
   const scans = await Promise.all(
     texts.map((text) =>
       text === null
@@ -102,7 +118,9 @@ export async function interceptFiles(
         : engine.scan(text, { types: policy.enabledTypes ?? undefined }),
     ),
   );
-  if (scans.every((findings) => findings.length === 0)) return { kind: 'allow' };
+  if (scans.every((findings) => findings.length === 0)) {
+    return withUnscanned({ kind: 'allow' as const }, unscannedNames);
+  }
 
   if (policy.mode === 'auto-mask') {
     const nextFiles = [...files];
@@ -115,7 +133,10 @@ export async function interceptFiles(
       mappings.push(...result.mappings);
       findings.push(...scans[i]!);
     });
-    return { kind: 'auto-mask', files: nextFiles, mappings, findings };
+    return withUnscanned(
+      { kind: 'auto-mask' as const, files: nextFiles, mappings, findings },
+      unscannedNames,
+    );
   }
 
   // Build the combined review document from the offending files only.
@@ -134,14 +155,17 @@ export async function interceptFiles(
     }
   });
 
-  return {
-    kind: 'review',
-    files,
-    combined,
-    findings,
-    entries,
-    canSendAnyway: policy.mode !== 'block',
-  };
+  return withUnscanned(
+    {
+      kind: 'review' as const,
+      files,
+      combined,
+      findings,
+      entries,
+      canSendAnyway: policy.mode !== 'block',
+    },
+    unscannedNames,
+  );
 }
 
 /**

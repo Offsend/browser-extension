@@ -1,4 +1,5 @@
 import type { Finding } from '@/core/detection';
+import { indexComposerText, type ComposerTextIndex } from '@/core/adapters/shared/composer';
 
 /**
  * Live composer highlighting: while the user types, sensitive values are
@@ -34,32 +35,8 @@ function ensureHighlightStyle(doc: Document): void {
   doc.head.appendChild(style);
 }
 
-interface TextIndex {
-  readonly text: string;
-  readonly nodes: readonly { readonly node: Text; readonly start: number }[];
-}
-
-/**
- * Concatenated text-node content with per-node start offsets. Detection runs
- * on this exact string so finding offsets map 1:1 to DOM positions. (Block
- * boundaries are not rendered as separators — a token spanning two paragraphs
- * could merge, which is acceptable for a visual hint; the submit-time scan
- * remains authoritative.)
- */
-function indexText(el: HTMLElement): TextIndex {
-  const walker = el.ownerDocument.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-  let text = '';
-  const nodes: { node: Text; start: number }[] = [];
-  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-    const t = n as Text;
-    nodes.push({ node: t, start: text.length });
-    text += t.data;
-  }
-  return { text, nodes };
-}
-
 /** Map a [start, end) span in the indexed text to a DOM Range. */
-function rangeFor(index: TextIndex, start: number, end: number): Range | null {
+function rangeFor(index: ComposerTextIndex, start: number, end: number): Range | null {
   const locate = (offset: number, preferEnd: boolean) => {
     for (let i = index.nodes.length - 1; i >= 0; i--) {
       const entry = index.nodes[i];
@@ -99,7 +76,7 @@ export function attachComposerHighlight(
 
   const clearHighlight = () => highlights?.delete(HIGHLIGHT_NAME);
 
-  const apply = (findings: readonly Finding[], index: TextIndex | null) => {
+  const apply = (findings: readonly Finding[], index: ComposerTextIndex | null) => {
     onFindings(findings);
     if (!highlights) return;
     if (findings.length === 0 || !index) {
@@ -117,7 +94,7 @@ export function attachComposerHighlight(
 
   const run = async () => {
     const gen = ++generation;
-    const index = isTextarea ? null : indexText(composer);
+    const index = isTextarea ? null : indexComposerText(composer);
     const text = index
       ? index.text
       : (composer as HTMLTextAreaElement | HTMLInputElement).value;
@@ -134,7 +111,7 @@ export function attachComposerHighlight(
     if (gen !== generation || !composer.isConnected) return;
     // The DOM may have moved on while scanning; a fresh input event will
     // re-run us, so stale offsets are simply dropped.
-    const fresh = isTextarea ? null : indexText(composer);
+    const fresh = isTextarea ? null : indexComposerText(composer);
     if (index && fresh && fresh.text !== index.text) return;
     apply(findings, fresh);
   };
@@ -158,6 +135,9 @@ export function attachComposerHighlight(
       if (timer) clearTimeout(timer);
       generation++;
       clearHighlight();
+      // Style lives in the page head (CSS Highlight API); remove it so SPA
+      // swaps / disable don't leave orphan rules behind.
+      doc.getElementById(STYLE_ID)?.remove();
       onFindings([]);
     },
   };

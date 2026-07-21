@@ -4,8 +4,6 @@ import { CUSTOM_RULE_LIMITS, type CustomRule } from '@/core/storage';
 import { Button, Toggle, type Theme } from '@/ui';
 import { CustomRuleModal } from './CustomRuleModal';
 
-const M = i18n();
-
 function newRule(): CustomRule {
   return {
     id: crypto.randomUUID(),
@@ -31,6 +29,7 @@ interface CustomRulesEditorProps {
 }
 
 export function CustomRulesEditor({ t, rules, onRulesChange }: CustomRulesEditorProps) {
+  const M = i18n();
   const [modal, setModal] = useState<ModalState | null>(null);
   const [draft, setDraft] = useState<CustomRule>(() => newRule());
 

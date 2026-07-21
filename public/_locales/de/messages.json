@@ -4,7 +4,7 @@
     "description": "Extension name shown in the store and browser UI."
   },
   "extDescription": {
-    "message": "Erkennt API-Schlüssel, Passwörter und andere sensible Daten in KI-Chat-Prompts und maskiert sie lokal in Ihrem Browser, bevor Sie senden.",
+    "message": "Maskiert API-Schlüssel, Passwörter und personenbezogene Daten in KI-Chat-Prompts — lokal im Browser vor dem Senden.",
     "description": "Extension description shown in the store and browser UI."
   }
 }

@@ -1,2 +1,2 @@
 export type { MappingEntry, MaskResult } from './types';
-export { maskText, restoreText } from './mask';
+export { isMaskCommitted, maskText, restoreText } from './mask';

@@ -16,6 +16,14 @@ export default defineConfig({
       testMatch: /fixtures\.spec\.ts/,
     },
     {
+      name: 'policy',
+      testMatch: /policy\.spec\.ts/,
+    },
+    {
+      name: 'files',
+      testMatch: /files\.spec\.ts/,
+    },
+    {
       name: 'network',
       testMatch: /network\.spec\.ts/,
     },

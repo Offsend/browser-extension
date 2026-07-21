@@ -22,10 +22,6 @@ import {
 import { hasTelemetryDataConsent, requestTelemetryDataConsent } from '@/core/telemetry';
 import { CustomRulesEditor } from './CustomRulesEditor';
 
-const M = i18n();
-
-const TYPE_LABEL: Record<FindingType, string> = M.typeName;
-
 const ALL_TYPES: readonly FindingType[] = [
   'email',
   'phone',
@@ -38,12 +34,6 @@ const ALL_TYPES: readonly FindingType[] = [
   'uuid',
   'secret',
   'custom',
-];
-
-const MODES: readonly { value: PolicyMode; label: string; hint: string }[] = [
-  { value: 'warn', label: M.mode.warn, hint: M.options.modeWarnHint },
-  { value: 'auto-mask', label: M.mode['auto-mask'], hint: M.options.modeAutoMaskHint },
-  { value: 'block', label: M.mode.block, hint: M.options.modeBlockHint },
 ];
 
 function Radio({ t, on }: { t: Theme; on: boolean }) {
@@ -65,6 +55,12 @@ function Radio({ t, on }: { t: Theme; on: boolean }) {
 
 export function App() {
   const t = useTheme();
+  const M = i18n();
+  const modes: readonly { value: PolicyMode; label: string; hint: string }[] = [
+    { value: 'warn', label: M.mode.warn, hint: M.options.modeWarnHint },
+    { value: 'auto-mask', label: M.mode['auto-mask'], hint: M.options.modeAutoMaskHint },
+    { value: 'block', label: M.mode.block, hint: M.options.modeBlockHint },
+  ];
   const store = useMemo(
     () => new SettingsStore(createBrowserBackend(browser.storage.local)),
     [],
@@ -77,13 +73,25 @@ export function App() {
   }, [store]);
 
   useEffect(() => {
+    const onChanged = (
+      changes: Record<string, Browser.storage.StorageChange>,
+      area: string,
+    ) => {
+      if (area !== 'local' || !changes['offsend:state']) return;
+      void store.getSettings().then(setSettings);
+    };
+    browser.storage.onChanged.addListener(onChanged);
+    return () => browser.storage.onChanged.removeListener(onChanged);
+  }, [store]);
+
+  useEffect(() => {
     void hasTelemetryDataConsent().then(setTelemetryConsent);
   }, [settings?.telemetryEnabled]);
 
   const persist = useCallback(
-    async (next: Settings) => {
+    async (patch: Parameters<SettingsStore['patchSettings']>[0]) => {
+      const next = await store.patchSettings(patch);
       setSettings(next);
-      await store.saveSettings(next);
     },
     [store],
   );
@@ -110,15 +118,13 @@ export function App() {
   const isTypeOn = (ty: FindingType) => enabled === null || enabled.includes(ty);
 
   const setPolicy = (patch: Partial<Settings['policy']>) =>
-    void persist({ ...settings, policy: { ...settings.policy, ...patch } });
+    void persist({ policy: patch });
 
   const toggleType = (ty: FindingType) => {
     const current = enabled === null ? [...ALL_TYPES] : [...enabled];
     const nextList = isTypeOn(ty) ? current.filter((x) => x !== ty) : [...current, ty];
     void persist({
-      ...settings,
       policy: {
-        ...settings.policy,
         enabledTypes: nextList.length === ALL_TYPES.length ? null : nextList,
       },
     });
@@ -163,7 +169,7 @@ export function App() {
 
       <main style={{ maxWidth: 640, margin: '0 auto', padding: '24px 20px 56px' }}>
         <Group t={t} title={M.options.modeTitle} hint={M.options.modeHint}>
-          {MODES.map((m) => (
+          {modes.map((m) => (
             <button
               key={m.value}
               onClick={() => setPolicy({ mode: m.value })}
@@ -196,7 +202,7 @@ export function App() {
 
         <Group t={t} title={M.options.detectorsTitle} hint={M.options.detectorsHint}>
           {ALL_TYPES.map((ty) => (
-            <Row key={ty} t={t} label={TYPE_LABEL[ty]}>
+            <Row key={ty} t={t} label={M.typeName[ty]}>
               <Toggle t={t} on={isTypeOn(ty)} onChange={() => toggleType(ty)} />
             </Row>
           ))}
@@ -206,7 +212,7 @@ export function App() {
           <CustomRulesEditor
             t={t}
             rules={settings.customRules}
-            onRulesChange={(customRules) => void persist({ ...settings, customRules: [...customRules] })}
+            onRulesChange={(customRules) => void persist({ customRules: [...customRules] })}
           />
         </Group>
 
@@ -220,7 +226,6 @@ export function App() {
               value={settings.mappingTtlMinutes}
               onChange={(v) =>
                 void persist({
-                  ...settings,
                   mappingTtlMinutes: Math.max(1, Number(v) || 1),
                 })
               }
@@ -242,7 +247,7 @@ export function App() {
                     setTelemetryConsent(granted);
                     if (!granted) return;
                   }
-                  await persist({ ...settings, telemetryEnabled: next });
+                  await persist({ telemetryEnabled: next });
                 })();
               }}
             />

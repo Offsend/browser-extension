@@ -35,6 +35,12 @@ export interface Finding {
 export interface ScanOptions {
   /** When set, only these types are scanned. Otherwise all are scanned. */
   readonly types?: readonly FindingType[];
+  /**
+   * Soft wall-clock budget for the scan (ms). When exceeded, remaining detectors
+   * are skipped so a pathological custom regex cannot freeze the page. Default
+   * applies in {@link TsEngine}.
+   */
+  readonly budgetMs?: number;
 }
 
 /**

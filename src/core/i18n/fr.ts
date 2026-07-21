@@ -32,6 +32,7 @@ export const fr: Messages = {
   },
 
   overlay: {
+    reviewAriaLabel: 'Revue Offsend',
     sensitiveFound: (n) => `${n} ${values(n)} sensible${n === 1 ? '' : 's'} trouvée${n === 1 ? '' : 's'}`,
     maskAndSend: 'Masquer et envoyer',
     sendAnyway: 'Envoyer quand même',
@@ -47,6 +48,12 @@ export const fr: Messages = {
     restored: (n) => `${n} ${values(n)} restaurée${n === 1 ? '' : 's'}`,
     nothingToRestore: 'Rien à restaurer',
     maskingFailed: 'Échec du masquage — message non envoyé',
+    restoreUnavailable: 'Masqué, mais Restaurer est indisponible pour le moment',
+    attachFailed: 'Impossible d’analyser la pièce jointe — fichier bloqué',
+    unscannedAttachment: (n) =>
+      n === 1
+        ? '1 pièce jointe n’a pas pu être analysée — jointe telle quelle'
+        : `${n} pièces jointes n’ont pas pu être analysées — jointes telles quelles`,
     restoreAction: 'Restaurer',
   },
 
@@ -54,6 +61,7 @@ export const fr: Messages = {
     protectionPaused: 'Protection en pause',
     promptInputNotFound: 'Champ de saisie introuvable',
     sendButtonNotFound: "Bouton d'envoi introuvable",
+    adapterOutdated: 'Mettez à jour l’extension — la protection peut être incomplète',
   },
 
   badge: {

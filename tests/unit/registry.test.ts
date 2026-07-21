@@ -33,6 +33,13 @@ describe('resolveAdapter', () => {
 });
 
 describe('ADAPTERS registry', () => {
+  it('ships every adapter on the current contract version', async () => {
+    const { CONTRACT_VERSION } = await import('@/core/adapters');
+    for (const adapter of ADAPTERS) {
+      expect(adapter.contractVersion).toBe(CONTRACT_VERSION);
+    }
+  });
+
   it('includes gemini.google.com', () => {
     expect(resolveAdapter('https://gemini.google.com/app', ADAPTERS)?.id).toBe('gemini');
   });

@@ -4,8 +4,6 @@ import type { HealthReply } from '@/core/messaging/protocol';
 import { SettingsStore, createBrowserBackend, type PolicyMode } from '@/core/storage';
 import { Badge, Brand, Button, IGear, Toggle, useTheme, type Theme } from '@/ui';
 
-const M = i18n();
-
 function hostOf(url: string | null): string | null {
   if (!url) return null;
   try {
@@ -15,9 +13,8 @@ function hostOf(url: string | null): string | null {
   }
 }
 
-const MODE_LABEL: Record<PolicyMode, string> = M.mode;
-
 function StatusBadge({ t, health }: { t: Theme; health: HealthReply | null }) {
+  const M = i18n();
   if (!health || health.status === 'inactive') {
     return (
       <Badge t={t} tone="neutral">
@@ -65,6 +62,7 @@ function InfoRow({ t, label, children }: { t: Theme; label: string; children: Re
 
 export function App() {
   const t = useTheme();
+  const M = i18n();
   const [host, setHost] = useState<string | null>(null);
   const [health, setHealth] = useState<HealthReply | null>(null);
   const [mode, setMode] = useState<PolicyMode | null>(null);
@@ -107,7 +105,7 @@ export function App() {
     const store = new SettingsStore(createBrowserBackend(browser.storage.local));
     const settings = await store.getSettings();
     const next = !settings.enabled;
-    await store.saveSettings({ ...settings, enabled: next });
+    await store.patchSettings({ enabled: next });
     setEnabled(next);
 
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
@@ -164,7 +162,7 @@ export function App() {
         </InfoRow>
         <div style={{ height: 1, background: t.border }} />
         <InfoRow t={t} label={M.popup.mode}>
-          {mode ? MODE_LABEL[mode] : '—'}
+          {mode ? M.mode[mode] : '—'}
         </InfoRow>
       </div>
 
