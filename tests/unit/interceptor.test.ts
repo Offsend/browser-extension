@@ -78,6 +78,32 @@ describe('intercept', () => {
     expect(out.masked).toMatch(/^use \{\{CUSTOM_1_[a-z0-9]+\}\} here$/);
   });
 
+  it('skips exact values trusted for that detector', async () => {
+    const out = await intercept('mail a@b.com', 'chatgpt.com', policy(), engine, [
+      {
+        id: 't1',
+        value: 'a@b.com',
+        detector: 'email',
+        type: 'email',
+        createdAt: 1,
+      },
+    ]);
+    expect(out.kind).toBe('allow');
+  });
+
+  it('does not apply a trusted value to a different detector', async () => {
+    const out = await intercept('mail a@b.com', 'chatgpt.com', policy(), engine, [
+      {
+        id: 't1',
+        value: 'a@b.com',
+        detector: 'openai-key',
+        type: 'api_key',
+        createdAt: 1,
+      },
+    ]);
+    expect(out.kind).toBe('review');
+  });
+
   it('skips custom rules when the custom type is disabled', async () => {
     const out = await intercept(
       'use PRJ-007 here',
@@ -86,5 +112,30 @@ describe('intercept', () => {
       customEngine,
     );
     expect(out.kind).toBe('allow');
+  });
+
+  it('reviews Smart PII findings only when the feature is on', async () => {
+    const text = 'Prepare an email to John Smith from Acme Corp about his contract.';
+    const smartPii = {
+      enabled: true,
+      person: true,
+      organization: true,
+      address: true,
+      location: true,
+    } as const;
+    const off = await intercept(text, 'chatgpt.com', policy(), createEngine());
+    expect(off.kind).toBe('allow');
+
+    const on = await intercept(
+      text,
+      'chatgpt.com',
+      policy(),
+      createEngine([], smartPii),
+      [],
+      smartPii,
+    );
+    expect(on.kind).toBe('review');
+    if (on.kind !== 'review') return;
+    expect(on.findings.map((f) => f.type).sort()).toEqual(['organization', 'person']);
   });
 });

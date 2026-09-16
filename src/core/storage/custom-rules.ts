@@ -1,4 +1,5 @@
 import { DETECTORS, type Detector } from '../detection/detectors';
+import { DEFAULT_SMART_PII, smartPiiDetectors, type SmartPiiSettings } from '../detection/smart-pii';
 import { TsEngine } from '../detection/ts-engine';
 import type { CustomRule } from './schema';
 
@@ -201,6 +202,13 @@ export function buildCustomDetectors(rules: readonly CustomRule[]): Detector[] {
   });
 }
 
-export function createEngine(customRules: readonly CustomRule[] = []): TsEngine {
-  return new TsEngine([...DETECTORS, ...buildCustomDetectors(customRules)]);
+export function createEngine(
+  customRules: readonly CustomRule[] = [],
+  smartPii: SmartPiiSettings = DEFAULT_SMART_PII,
+): TsEngine {
+  return new TsEngine([
+    ...DETECTORS,
+    ...buildCustomDetectors(customRules),
+    ...smartPiiDetectors(smartPii),
+  ]);
 }

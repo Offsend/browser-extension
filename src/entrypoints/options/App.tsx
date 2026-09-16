@@ -1,11 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FindingType } from '@/core/detection';
 import { t as i18n } from '@/core/i18n';
 import {
   DEFAULT_SETTINGS,
   SettingsStore,
+  applyPortablePolicy,
   createBrowserBackend,
+  parsePortablePolicy,
+  policyImportSummary,
+  serializePortablePolicy,
+  type PolicyImportSummary,
   type PolicyMode,
+  type PortablePolicy,
+  type PortablePolicyError,
   type Settings,
 } from '@/core/storage';
 import {
@@ -19,6 +26,8 @@ import {
   useTheme,
   type Theme,
 } from '@/ui';
+import { openWelcomePage } from '@/core/onboarding/page';
+import { removeTrustedValue } from '@/core/storage';
 import { hasTelemetryDataConsent, requestTelemetryDataConsent } from '@/core/telemetry';
 import { CustomRulesEditor } from './CustomRulesEditor';
 
@@ -67,6 +76,14 @@ export function App() {
   );
   const [settings, setSettings] = useState<Settings | null>(null);
   const [telemetryConsent, setTelemetryConsent] = useState(true);
+  const [importPreview, setImportPreview] = useState<{
+    readonly policy: PortablePolicy;
+    readonly summary: PolicyImportSummary;
+    readonly warnings: readonly string[];
+  } | null>(null);
+  const [policyError, setPolicyError] = useState<PortablePolicyError | null>(null);
+  const [policyImported, setPolicyImported] = useState(false);
+  const importInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     void store.getSettings().then(setSettings);
@@ -208,6 +225,44 @@ export function App() {
           ))}
         </Group>
 
+        <Group t={t} title={M.options.smartPiiTitle} hint={M.options.smartPiiHint}>
+          <Row t={t} label={M.options.smartPiiEnable} hint={M.options.smartPiiEnableHint}>
+            <Toggle
+              t={t}
+              on={settings.smartPii.enabled}
+              onChange={() =>
+                void persist({
+                  smartPii: { ...settings.smartPii, enabled: !settings.smartPii.enabled },
+                })
+              }
+            />
+          </Row>
+          {settings.smartPii.enabled ? (
+            <>
+              {(
+                [
+                  ['person', M.options.smartPiiPerson],
+                  ['organization', M.options.smartPiiOrganization],
+                  ['address', M.options.smartPiiAddress],
+                  ['location', M.options.smartPiiLocation],
+                ] as const
+              ).map(([key, label]) => (
+                <Row key={key} t={t} label={label}>
+                  <Toggle
+                    t={t}
+                    on={settings.smartPii[key]}
+                    onChange={() =>
+                      void persist({
+                        smartPii: { ...settings.smartPii, [key]: !settings.smartPii[key] },
+                      })
+                    }
+                  />
+                </Row>
+              ))}
+            </>
+          ) : null}
+        </Group>
+
         <Group t={t} title={M.options.customRulesTitle} hint={M.options.customRulesHint}>
           <CustomRulesEditor
             t={t}
@@ -231,6 +286,15 @@ export function App() {
               }
             />
             <span style={{ fontSize: 12, color: t.textSub }}>{M.options.minutes}</span>
+          </Row>
+          <Row t={t} label={M.options.autoRestore} hint={M.options.autoRestoreHint}>
+            <Toggle
+              t={t}
+              on={settings.autoRestoreResponses}
+              onChange={() =>
+                void persist({ autoRestoreResponses: !settings.autoRestoreResponses })
+              }
+            />
           </Row>
         </Group>
 
@@ -274,7 +338,201 @@ export function App() {
           </div>
         </Group>
 
-        <div style={{ marginTop: 8 }}>
+        <Group t={t} title={M.options.policyTitle} hint={M.options.policyHint}>
+          <p style={{ margin: '12px 0 8px', fontSize: 12, color: t.textSub }}>
+            {M.options.policyExportWarn}
+          </p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '4px 0 12px' }}>
+            <Button
+              t={t}
+              variant="outline"
+              onClick={() => {
+                const blob = new Blob([serializePortablePolicy(settings)], {
+                  type: 'application/json',
+                });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'offsend-browser-policy.json';
+                link.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              {M.options.policyExport}
+            </Button>
+            <Button
+              t={t}
+              variant="outline"
+              onClick={() => {
+                setPolicyError(null);
+                setPolicyImported(false);
+                importInput.current?.click();
+              }}
+            >
+              {M.options.policyImport}
+            </Button>
+            <input
+              ref={importInput}
+              type="file"
+              accept="application/json,.json"
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = '';
+                if (!file) return;
+                void file.text().then((raw) => {
+                  const parsed = parsePortablePolicy(raw);
+                  if (!parsed.ok) {
+                    setImportPreview(null);
+                    setPolicyError(parsed.error);
+                    setPolicyImported(false);
+                    return;
+                  }
+                  setPolicyError(null);
+                  setPolicyImported(false);
+                  setImportPreview({
+                    policy: parsed.policy,
+                    warnings: parsed.warnings,
+                    summary: policyImportSummary(settings, parsed.policy),
+                  });
+                });
+              }}
+            />
+          </div>
+          {policyError ? (
+            <p style={{ margin: '0 0 12px', fontSize: 12.5, color: t.redText }}>
+              {policyError === 'not_json'
+                ? M.options.policyErrorNotJson
+                : policyError === 'not_policy'
+                  ? M.options.policyErrorNotPolicy
+                  : policyError === 'unsupported_format'
+                    ? M.options.policyErrorFormat
+                    : M.options.policyErrorInvalid}
+            </p>
+          ) : null}
+          {importPreview ? (
+            <div style={{ padding: '0 0 14px' }}>
+              <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 500, color: t.text }}>
+                {M.options.policyPreviewTitle}
+              </p>
+              <p style={{ margin: '0 0 8px', fontSize: 12, color: t.textSub }}>
+                {M.options.policyPreviewKeep}
+              </p>
+              {importPreview.warnings.length > 0 ? (
+                <p style={{ margin: '0 0 8px', fontSize: 12, color: t.textSub }}>
+                  {M.options.policyUnknownKeys(importPreview.warnings.join(', '))}
+                </p>
+              ) : null}
+              <ul
+                style={{
+                  margin: '0 0 12px',
+                  paddingLeft: 18,
+                  fontSize: 12.5,
+                  color: t.text,
+                  lineHeight: 1.55,
+                }}
+              >
+                <li>
+                  {M.options.policyPreviewMode(
+                    M.mode[importPreview.summary.modeFrom],
+                    M.mode[importPreview.summary.modeTo],
+                  )}
+                </li>
+                <li>
+                  {M.options.policyPreviewRules(
+                    importPreview.summary.rulesFrom,
+                    importPreview.summary.rulesTo,
+                  )}
+                </li>
+                <li>
+                  {M.options.policyPreviewTrusted(
+                    importPreview.summary.trustedFrom,
+                    importPreview.summary.trustedTo,
+                  )}
+                </li>
+                <li>
+                  {M.options.policyPreviewAllowlist(
+                    importPreview.summary.allowFrom,
+                    importPreview.summary.allowTo,
+                  )}
+                </li>
+              </ul>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <Button
+                  t={t}
+                  variant="primary"
+                  onClick={() => {
+                    const next = applyPortablePolicy(settings, importPreview.policy);
+                    void persist({
+                      policy: next.policy,
+                      customRules: [...next.customRules],
+                      trustedValues: [...next.trustedValues],
+                      smartPii: next.smartPii,
+                      autoRestoreResponses: next.autoRestoreResponses,
+                      mappingTtlMinutes: next.mappingTtlMinutes,
+                    }).then(() => {
+                      setImportPreview(null);
+                      setPolicyImported(true);
+                    });
+                  }}
+                >
+                  {M.options.policyApply}
+                </Button>
+                <Button
+                  t={t}
+                  variant="ghost"
+                  onClick={() => {
+                    setImportPreview(null);
+                    setPolicyError(null);
+                  }}
+                >
+                  {M.options.policyCancel}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+          {policyImported ? (
+            <p style={{ margin: '0 0 12px', fontSize: 12.5, color: t.textSub }}>
+              {M.options.policyImported}
+            </p>
+          ) : null}
+        </Group>
+
+        <Group t={t} title={M.options.trustedTitle} hint={M.options.trustedHint}>
+          {settings.trustedValues.length === 0 ? (
+            <p style={{ margin: '12px 0', fontSize: 12.5, color: t.textSub }}>
+              {M.options.trustedEmpty}
+            </p>
+          ) : (
+            settings.trustedValues.map((item) => (
+              <Row
+                key={item.id}
+                t={t}
+                label={item.value}
+                hint={M.type[item.type]}
+                align="top"
+              >
+                <Button
+                  t={t}
+                  variant="ghost"
+                  sm
+                  onClick={() =>
+                    void persist({
+                      trustedValues: removeTrustedValue(settings.trustedValues, item.id),
+                    })
+                  }
+                >
+                  {M.options.trustedRemove}
+                </Button>
+              </Row>
+            ))
+          )}
+        </Group>
+
+        <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Button t={t} variant="outline" onClick={() => openWelcomePage()}>
+            {M.options.privacyTest}
+          </Button>
           <Button t={t} variant="outline" onClick={reset}>
             {M.options.resetDefaults}
           </Button>

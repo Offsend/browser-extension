@@ -24,6 +24,10 @@ export default defineConfig({
       testMatch: /files\.spec\.ts/,
     },
     {
+      name: 'welcome',
+      testMatch: /welcome\.spec\.ts/,
+    },
+    {
       name: 'network',
       testMatch: /network\.spec\.ts/,
     },

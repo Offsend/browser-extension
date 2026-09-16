@@ -1,6 +1,6 @@
 {
   "name": "offsend-extension",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Offsend browser extension — local detection & masking of sensitive data before it reaches web AI interfaces.",
   "private": true,
   "type": "module",
@@ -51,6 +51,7 @@
     "wxt": "^0.20.26"
   },
   "dependencies": {
+    "fflate": "^0.8.3",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   }

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { t as i18n } from '@/core/i18n';
 import type { HealthReply } from '@/core/messaging/protocol';
+import { openWelcomePage } from '@/core/onboarding/page';
+import { DEFAULT_STATS, loadStats, resetStats, type LocalStats } from '@/core/stats';
 import { SettingsStore, createBrowserBackend, type PolicyMode } from '@/core/storage';
 import { Badge, Brand, Button, IGear, Toggle, useTheme, type Theme } from '@/ui';
 
@@ -67,6 +69,7 @@ export function App() {
   const [health, setHealth] = useState<HealthReply | null>(null);
   const [mode, setMode] = useState<PolicyMode | null>(null);
   const [enabled, setEnabled] = useState(true);
+  const [stats, setStats] = useState<LocalStats>(DEFAULT_STATS);
 
   useEffect(() => {
     const backend = createBrowserBackend(browser.storage.local);
@@ -85,6 +88,7 @@ export function App() {
       const settings = await store.getSettings();
       setMode(settings.policy.mode);
       setEnabled(settings.enabled);
+      setStats(await loadStats(backend));
     };
 
     void load();
@@ -93,7 +97,11 @@ export function App() {
       changes: Record<string, Browser.storage.StorageChange>,
       area: string,
     ) => {
-      if (area !== 'local' || !changes['offsend:state']) return;
+      if (area !== 'local') return;
+      if (changes['offsend:stats']) {
+        void loadStats(backend).then(setStats);
+      }
+      if (!changes['offsend:state']) return;
       const next = changes['offsend:state'].newValue as { settings?: { enabled?: boolean } } | undefined;
       if (typeof next?.settings?.enabled === 'boolean') setEnabled(next.settings.enabled);
     };
@@ -166,6 +174,40 @@ export function App() {
         </InfoRow>
       </div>
 
+      <div
+        style={{
+          marginTop: 10,
+          background: t.card,
+          border: `1px solid ${t.border}`,
+          borderRadius: 12,
+          padding: '10px 14px',
+        }}
+      >
+        <div style={{ fontSize: 11, color: t.textMuted, marginBottom: 6 }}>{M.popup.statsTitle}</div>
+        <div style={{ fontSize: 12.5, color: t.text, lineHeight: 1.55 }}>
+          <div>{M.popup.statsChecked(stats.promptsChecked)}</div>
+          <div>{M.popup.statsProtected(stats.promptsProtected)}</div>
+          <div>{M.popup.statsMasked(stats.valuesMasked)}</div>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            void resetStats(createBrowserBackend(browser.storage.local)).then(setStats);
+          }}
+          style={{
+            marginTop: 8,
+            background: 'none',
+            border: 0,
+            padding: 0,
+            color: t.blueText,
+            fontSize: 11,
+            cursor: 'pointer',
+          }}
+        >
+          {M.popup.statsReset}
+        </button>
+      </div>
+
       {health?.status === 'degraded' && health.reason && (
         <p
           style={{
@@ -182,7 +224,18 @@ export function App() {
         </p>
       )}
 
-      <div style={{ marginTop: 14 }}>
+      <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <Button
+          t={t}
+          variant="outline"
+          fullWidth
+          onClick={() => {
+            openWelcomePage();
+            window.close();
+          }}
+        >
+          {M.popup.privacyTest}
+        </Button>
         <Button
           t={t}
           variant="outline"

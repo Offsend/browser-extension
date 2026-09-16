@@ -15,6 +15,10 @@ export const de: Messages = {
     uuid: 'UUID',
     secret: 'Geheimnis',
     custom: 'Benutzerdefiniert',
+    person: 'Name',
+    organization: 'Organisation',
+    address: 'Adresse',
+    location: 'Ort',
   },
 
   typeName: {
@@ -29,6 +33,10 @@ export const de: Messages = {
     uuid: 'UUIDs',
     secret: 'Allgemeine Geheimnisse',
     custom: 'Eigene Regeln',
+    person: 'Personennamen',
+    organization: 'Organisationen',
+    address: 'Adressen',
+    location: 'Orte',
   },
 
   overlay: {
@@ -40,6 +48,47 @@ export const de: Messages = {
     attachAnyway: 'Trotzdem anhängen',
     cancel: 'Abbrechen',
     liveChip: (summary) => `${summary} — wird beim Senden maskiert`,
+    coverageTitle: 'Anhang-Prüfung',
+    attachmentScanned: 'Geprüft',
+    attachmentNotScanned: 'Nicht geprüft',
+    attachmentFoundNotMasked: 'Gefunden, nicht verborgen',
+    attachmentCannotMask:
+      'Dieser Wert bleibt in der Datei. Offsend kann ihn nicht verbergen — abbrechen oder unverändert anhängen.',
+    alwaysAllow: 'Immer erlauben',
+    why: 'Warum?',
+    reviewAskTitle: (n) =>
+      `Offsend hat ${n} sensible ${values(n)} auf diesem Gerät geschützt.`,
+    reviewAskBody: 'Wenn es nützlich war, hilft eine Bewertung anderen, es zu finden.',
+    reviewAskCta: 'Bewertung abgeben',
+    reviewAskDismiss: 'Nicht jetzt',
+  },
+
+  explain: {
+    localNote: 'Lokal erkannt. Nichts wurde hochgeladen.',
+    fallback: 'Dieser Wert entspricht einem Muster für sensible Daten.',
+    'private-key-pem': 'Das sieht aus wie ein PEM-Privatschlüssel.',
+    'aws-access-key-id': 'Das entspricht der Struktur einer AWS-Access-Key-ID.',
+    'github-token': 'Das entspricht der Struktur eines GitHub-Personal-Access-Tokens.',
+    'openai-key': 'Das entspricht der Struktur eines OpenAI-API-Schlüssels.',
+    'slack-token': 'Das entspricht der Struktur eines Slack-Tokens.',
+    'stripe-key': 'Das entspricht der Struktur eines Stripe-API-Schlüssels.',
+    'database-url-password': 'Diese Datenbank-URL enthält ein Passwort.',
+    jwt: 'Das sieht aus wie ein JSON Web Token.',
+    'bearer-token': 'Das sieht aus wie ein HTTP-Bearer-Token.',
+    email: 'Das sieht aus wie eine E-Mail-Adresse.',
+    iban: 'Das entspricht einer IBAN und besteht die IBAN-Prüfsumme.',
+    'credit-card': 'Das sieht aus wie eine Kartennummer und besteht die Luhn-Prüfung.',
+    ipv4: 'Das sieht aus wie eine IPv4-Adresse.',
+    uuid: 'Das sieht aus wie eine UUID.',
+    'phone-e164': 'Das sieht aus wie eine internationale Telefonnummer.',
+    'high-entropy-string':
+      'Dieser Wert wirkt wie ein generiertes Geheimnis, weil die Zeichenfolge ungewöhnlich zufällig ist. Dieser Detektor kann Fehlalarme haben.',
+    'person-name':
+      'Das sieht nach einem Personennamen aus. Lokal erkannt. Dieser Detektor kann Fehlalarme haben.',
+    'organization-name': 'Das sieht nach einem Organisationsnamen aus (z. B. mit Firmensuffix).',
+    'street-address': 'Das sieht nach einer Straßenadresse aus.',
+    'geo-location':
+      'Das sieht nach einer Stadt, einem Land oder einer Region aus. Lokal erkannt. Dieser Detektor kann Fehlalarme haben.',
   },
 
   toast: {
@@ -84,6 +133,12 @@ export const de: Messages = {
     active: 'aktiv',
     protectionIncomplete: (reason) => `${reason} — Schutz möglicherweise unvollständig.`,
     settings: 'Einstellungen',
+    privacyTest: 'Datenschutztest',
+    statsTitle: 'Dieses Gerät',
+    statsChecked: (n) => `${n} Prompts geprüft`,
+    statsProtected: (n) => `${n} Prompts geschützt`,
+    statsMasked: (n) => `${n} sensible ${values(n)} maskiert`,
+    statsReset: 'Statistik zurücksetzen',
     footer: 'Inhalte verlassen Ihr Gerät nie.',
   },
 
@@ -104,6 +159,15 @@ export const de: Messages = {
     modeBlockHint: 'Senden ist blockiert, bis sensible Werte maskiert sind.',
     detectorsTitle: 'Detektoren',
     detectorsHint: 'Wählen Sie, welche Arten sensibler Werte Offsend scannt.',
+    smartPiiTitle: 'Smart PII',
+    smartPiiHint:
+      'Namen, Organisationen, Adressen und Orte, die Regex-Detektoren übersehen. Läuft auf diesem Gerät. Standardmäßig aus. Nichts wird heruntergeladen oder hochgeladen.',
+    smartPiiEnable: 'Namen und Orte erkennen',
+    smartPiiEnableHint: 'On-Device-Detektor. Die Regex-Detektoren bleiben unverändert.',
+    smartPiiPerson: 'Personennamen',
+    smartPiiOrganization: 'Organisationen',
+    smartPiiAddress: 'Adressen',
+    smartPiiLocation: 'Orte',
     customRulesTitle: 'Eigene Regeln',
     customRulesHint:
       'JavaScript-Regex-Muster zusätzlich zu den eingebauten Detektoren. Schalten Sie „Eigene Regeln“ unter Detektoren ein oder aus.',
@@ -111,6 +175,9 @@ export const de: Messages = {
     restoreWindow: 'Wiederherstellungsfenster',
     restoreWindowHint:
       'Wie lange verschlüsselte Zuordnungen aufbewahrt werden, um Originale wiederherzustellen.',
+    autoRestore: 'In KI-Antworten wiederherstellen',
+    autoRestoreHint:
+      'Originalwerte in der Unterhaltung auf diesem Gerät anzeigen. Kopieren verwendet weiterhin Platzhalter — das, was die KI gesehen hat.',
     minutes: 'Min',
     privacyTitle: 'Datenschutz',
     privacyHint:
@@ -119,7 +186,45 @@ export const de: Messages = {
     telemetryHint: 'Sendet höchstens einen anonymen Ping pro Tag. Ausschalten, um nichts zu senden.',
     allowlistTitle: 'Zulassungsliste',
     allowlistHint: 'Aufgelistete Hosts werden nie gescannt. Ein Host pro Zeile.',
+    trustedTitle: 'Vertrauenswürdige Werte',
+    trustedHint:
+      'Genaue Werte, die für den passenden Detektor übersprungen werden. Nicht die Host-Zulassungsliste.',
+    trustedEmpty: 'Noch keine Werte. Fügen Sie einen über „Immer erlauben“ in einem Fund hinzu.',
+    trustedRemove: 'Entfernen',
+    policyTitle: 'Richtlinie',
+    policyHint:
+      'Modus, Detektoren, Regeln, vertrauenswürdige Werte und die Host-Zulassungsliste exportieren oder importieren. Ein/Aus und Telemetrie bleiben auf diesem Gerät.',
+    policyExport: 'Exportieren',
+    policyImport: 'Importieren',
+    policyApply: 'Übernehmen',
+    policyCancel: 'Abbrechen',
+    policyExportWarn: 'Die Datei kann vertrauenswürdige Werte enthalten — genaue Zeichenfolgen, die Sie erlaubt haben.',
+    policyPreviewTitle: 'Die aktuelle Richtlinie wird ersetzt.',
+    policyPreviewKeep: 'Ein/Aus und Telemetrie ändern sich nicht.',
+    policyPreviewMode: (from, to) => `Modus: ${from} → ${to}`,
+    policyPreviewRules: (from, to) => `Eigene Regeln: ${from} → ${to}`,
+    policyPreviewTrusted: (from, to) => `Vertrauenswürdige Werte: ${from} → ${to}`,
+    policyPreviewAllowlist: (from, to) => `Zulassungsliste: ${from} → ${to}`,
+    policyErrorNotJson: 'Diese Datei ist kein gültiges JSON.',
+    policyErrorNotPolicy: 'Das ist keine Offsend-Browser-Richtlinie.',
+    policyErrorFormat: 'Diese Datei braucht eine neuere Offsend-Version.',
+    policyUnknownKeys: (keys) => `Zusätzliche Felder ignoriert: ${keys}`,
+    policyErrorInvalid: 'Diese Richtliniendatei hat ein ungültiges Feld.',
+    policyImported: 'Richtlinie importiert.',
+    privacyTest: 'Datenschutztest ausführen',
     resetDefaults: 'Auf Standard zurücksetzen',
+  },
+
+  welcome: {
+    documentTitle: 'Offsend — Datenschutztest',
+    introTitle: 'Offsend prüft KI-Prompts, bevor sie den Browser verlassen.',
+    trustLocal: 'Läuft lokal',
+    trustAccount: 'Kein Konto',
+    trustOpen: 'Open Source',
+    runTest: 'Datenschutztest ausführen',
+    maskedPreview: 'Nach der Maskierung',
+    localNote: 'Lokal erkannt. Nichts wurde hochgeladen.',
+    done: 'Sie sind geschützt.',
   },
 
   rules: {

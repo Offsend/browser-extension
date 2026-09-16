@@ -1,8 +1,17 @@
 import type { DetectionEngine, Finding } from '../detection';
 import { maskText } from '../masking';
 import type { MappingEntry } from '../masking';
-import type { Policy } from '../storage';
+import { resolveScanTypes } from '../detection/smart-pii';
+import {
+  DEFAULT_SMART_PII,
+  filterTrustedFindings,
+  type Policy,
+  type SmartPiiSettings,
+  type TrustedValue,
+} from '../storage';
 import { isAllowlisted } from './interceptor';
+import { extractOfficeText, isOfficeFile } from './office';
+import { extractPdfText, isPdfFile } from './pdf';
 
 /** Attachments larger than this are passed through unscanned. */
 export const MAX_SCAN_BYTES = 2 * 1024 * 1024;
@@ -26,11 +35,48 @@ const TEXT_EXTENSIONS =
 /** Can we read this attachment as text and scan it meaningfully? */
 export function isScannableFile(file: File): boolean {
   if (file.size === 0 || file.size > MAX_SCAN_BYTES) return false;
+  if (isOfficeFile(file) || isPdfFile(file)) return true;
   if (file.type.startsWith('text/')) return true;
   if (TEXT_MIME.has(file.type)) return true;
   // Extension fallback: browsers report odd/empty MIME types for code files
   // (e.g. `.ts` as video/mp2t), and dotfiles like `.env` have no type at all.
   return TEXT_EXTENSIONS.test(file.name) || /^\.[a-z0-9]+$/i.test(file.name);
+}
+
+interface AttachmentText {
+  readonly text: string;
+  /** False for OOXML / PDF: we can scan, but we must not rewrite the original. */
+  readonly maskable: boolean;
+}
+
+async function readAttachment(file: File): Promise<AttachmentText | null> {
+  if (file.size === 0 || file.size > MAX_SCAN_BYTES) return null;
+  if (isOfficeFile(file) || isPdfFile(file)) {
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const text = isPdfFile(file) ? extractPdfText(bytes) : extractOfficeText(bytes);
+      return text ? { text, maskable: false } : null;
+    } catch {
+      return null;
+    }
+  }
+  if (!isScannableFile(file)) return null;
+  try {
+    return { text: await file.text(), maskable: true };
+  } catch {
+    return null;
+  }
+}
+
+/** Per-file scan result shown in the review overlay. */
+export type FileCoverageStatus = 'scanned' | 'not-scanned';
+
+export interface FileCoverage {
+  readonly name: string;
+  readonly status: FileCoverageStatus;
+  readonly findingCount: number;
+  /** False when the file was scanned but cannot be rewritten (Office / PDF). */
+  readonly maskable: boolean;
 }
 
 /** One attached file that produced findings. */
@@ -41,6 +87,7 @@ export interface FileFindingEntry {
   readonly text: string;
   /** Offset of `text` inside the combined review document. */
   readonly base: number;
+  readonly maskable: boolean;
 }
 
 /**
@@ -48,17 +95,18 @@ export interface FileFindingEntry {
  * offending files (with `--- name ---` headers) so the existing review overlay
  * can preview masking; finding offsets are relative to that combined text.
  *
- * `unscannedNames` lists attachments we could not scan (binary, oversized, …)
- * so the UI can warn instead of silently allowing them.
+ * `coverage` is one row per attached file so the UI can show Scanned /
+ * Not scanned instead of implying an unreadable file was protected.
  */
 export type FileInterceptOutcome =
-  | { readonly kind: 'allow'; readonly unscannedNames?: readonly string[] }
+  | { readonly kind: 'allow'; readonly coverage: readonly FileCoverage[] }
+  | { readonly kind: 'coverage'; readonly coverage: readonly FileCoverage[] }
   | {
       readonly kind: 'auto-mask';
       readonly files: readonly File[];
       readonly mappings: readonly MappingEntry[];
       readonly findings: readonly Finding[];
-      readonly unscannedNames?: readonly string[];
+      readonly coverage: readonly FileCoverage[];
     }
   | {
       readonly kind: 'review';
@@ -67,7 +115,7 @@ export type FileInterceptOutcome =
       readonly findings: readonly Finding[];
       readonly entries: readonly FileFindingEntry[];
       readonly canSendAnyway: boolean;
-      readonly unscannedNames?: readonly string[];
+      readonly coverage: readonly FileCoverage[];
     };
 
 function maskedCopy(original: File, maskedText: string): File {
@@ -77,11 +125,17 @@ function maskedCopy(original: File, maskedText: string): File {
   });
 }
 
-function withUnscanned<T extends object>(
-  outcome: T,
-  unscannedNames: readonly string[],
-): T & { unscannedNames?: readonly string[] } {
-  return unscannedNames.length > 0 ? { ...outcome, unscannedNames } : outcome;
+function coverageOf(
+  files: readonly File[],
+  texts: readonly (AttachmentText | null)[],
+  scans: readonly Finding[][],
+): FileCoverage[] {
+  return files.map((file, i) => ({
+    name: file.name,
+    status: texts[i] === null ? 'not-scanned' : 'scanned',
+    findingCount: scans[i]?.length ?? 0,
+    maskable: texts[i]?.maskable ?? false,
+  }));
 }
 
 /**
@@ -93,50 +147,47 @@ export async function interceptFiles(
   host: string,
   policy: Policy,
   engine: DetectionEngine,
+  trustedValues: readonly TrustedValue[] = [],
+  smartPii: SmartPiiSettings = DEFAULT_SMART_PII,
 ): Promise<FileInterceptOutcome> {
-  if (isAllowlisted(host, policy.allowlist)) return { kind: 'allow' };
+  if (isAllowlisted(host, policy.allowlist)) return { kind: 'allow', coverage: [] };
 
-  const texts = await Promise.all(
-    files.map(async (file) => {
-      if (!isScannableFile(file)) return null;
-      try {
-        return await file.text();
-      } catch {
-        return null;
-      }
-    }),
-  );
-
-  const unscannedNames = files
-    .filter((_, i) => texts[i] === null)
-    .map((file) => file.name);
+  const texts = await Promise.all(files.map((file) => readAttachment(file)));
 
   const scans = await Promise.all(
-    texts.map((text) =>
-      text === null
-        ? Promise.resolve<Finding[]>([])
-        : engine.scan(text, { types: policy.enabledTypes ?? undefined }),
-    ),
+    texts.map(async (entry) => {
+      if (entry === null) return [];
+      return filterTrustedFindings(
+        await engine.scan(entry.text, { types: resolveScanTypes(policy.enabledTypes, smartPii) }),
+        trustedValues,
+      );
+    }),
   );
-  if (scans.every((findings) => findings.length === 0)) {
-    return withUnscanned({ kind: 'allow' as const }, unscannedNames);
+  const coverage = coverageOf(files, texts, scans);
+  const hasUnscanned = coverage.some((c) => c.status === 'not-scanned');
+  const hasFindings = scans.some((findings) => findings.length > 0);
+  const hasUnmaskableFindings = files.some(
+    (_, i) => (scans[i]?.length ?? 0) > 0 && texts[i]?.maskable === false,
+  );
+
+  if (!hasFindings) {
+    return hasUnscanned
+      ? { kind: 'coverage' as const, coverage }
+      : { kind: 'allow' as const, coverage };
   }
 
-  if (policy.mode === 'auto-mask') {
+  if (policy.mode === 'auto-mask' && !hasUnscanned && !hasUnmaskableFindings) {
     const nextFiles = [...files];
     const mappings: MappingEntry[] = [];
     const findings: Finding[] = [];
     files.forEach((file, i) => {
       if (scans[i]!.length === 0) return;
-      const result = maskText(texts[i]!, scans[i]!);
+      const result = maskText(texts[i]!.text, scans[i]!);
       nextFiles[i] = maskedCopy(file, result.masked);
       mappings.push(...result.mappings);
       findings.push(...scans[i]!);
     });
-    return withUnscanned(
-      { kind: 'auto-mask' as const, files: nextFiles, mappings, findings },
-      unscannedNames,
-    );
+    return { kind: 'auto-mask' as const, files: nextFiles, mappings, findings, coverage };
   }
 
   // Build the combined review document from the offending files only.
@@ -148,24 +199,28 @@ export async function interceptFiles(
     if (combined) combined += '\n\n';
     combined += `--- ${file.name} ---\n`;
     const base = combined.length;
-    combined += texts[i]!;
-    entries.push({ index: i, name: file.name, text: texts[i]!, base });
+    combined += texts[i]!.text;
+    entries.push({
+      index: i,
+      name: file.name,
+      text: texts[i]!.text,
+      base,
+      maskable: texts[i]!.maskable,
+    });
     for (const f of scans[i]!) {
       findings.push({ ...f, start: f.start + base, end: f.end + base });
     }
   });
 
-  return withUnscanned(
-    {
-      kind: 'review' as const,
-      files,
-      combined,
-      findings,
-      entries,
-      canSendAnyway: policy.mode !== 'block',
-    },
-    unscannedNames,
-  );
+  return {
+    kind: 'review' as const,
+    files,
+    combined,
+    findings,
+    entries,
+    canSendAnyway: policy.mode !== 'block',
+    coverage,
+  };
 }
 
 /**
@@ -180,6 +235,7 @@ export function maskReviewedFiles(
   const mappings: MappingEntry[] = [];
 
   for (const entry of outcome.entries) {
+    if (!entry.maskable) continue;
     const local = enabledFindings
       .filter((f) => f.start >= entry.base && f.end <= entry.base + entry.text.length)
       .map((f) => ({ ...f, start: f.start - entry.base, end: f.end - entry.base }));

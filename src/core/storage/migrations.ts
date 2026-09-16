@@ -17,12 +17,57 @@ const upgradeToV4: Migration = (data) => {
   return { ...data, settings };
 };
 
+const upgradeToV5: Migration = (data) => {
+  const settings =
+    typeof data.settings === 'object' && data.settings !== null
+      ? { ...(data.settings as Record<string, unknown>) }
+      : {};
+  if (!Array.isArray(settings.trustedValues)) {
+    settings.trustedValues = [];
+  }
+  return { ...data, settings };
+};
+
+const upgradeToV6: Migration = (data) => {
+  const settings =
+    typeof data.settings === 'object' && data.settings !== null
+      ? { ...(data.settings as Record<string, unknown>) }
+      : {};
+  if (typeof settings.autoRestoreResponses !== 'boolean') {
+    settings.autoRestoreResponses = true;
+  }
+  return { ...data, settings };
+};
+
+const upgradeToV7: Migration = (data) => {
+  const settings =
+    typeof data.settings === 'object' && data.settings !== null
+      ? { ...(data.settings as Record<string, unknown>) }
+      : {};
+  const current =
+    typeof settings.smartPii === 'object' && settings.smartPii !== null
+      ? (settings.smartPii as Record<string, unknown>)
+      : {};
+  settings.smartPii = {
+    enabled: false,
+    person: true,
+    organization: true,
+    address: true,
+    location: true,
+    ...current,
+  };
+  return { ...data, settings };
+};
+
 /** Index `n` upgrades persisted data from version `n` to `n + 1`. */
 export const MIGRATIONS: readonly Migration[] = [
   (data) => data,
   (data) => data,
   (data) => data,
   upgradeToV4,
+  upgradeToV5,
+  upgradeToV6,
+  upgradeToV7,
 ];
 
 /**

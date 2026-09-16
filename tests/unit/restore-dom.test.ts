@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { restoreInDom, restoreInText } from '@/core/restore/restore-dom';
+import {
+  isEditableCopyTarget,
+  restoreInDom,
+  restoreInText,
+  sealCopiedText,
+} from '@/core/restore/restore-dom';
 import type { MappingEntry } from '@/core/masking';
 
 const mappings: MappingEntry[] = [
@@ -55,5 +60,38 @@ describe('restoreInText', () => {
   it('is a no-op without placeholders or mappings', () => {
     expect(restoreInText('plain', mappings)).toEqual({ text: 'plain', count: 0 });
     expect(restoreInText('{{EMAIL_1}}', [])).toEqual({ text: '{{EMAIL_1}}', count: 0 });
+  });
+});
+
+describe('sealCopiedText', () => {
+  it('replaces originals with placeholders', () => {
+    expect(sealCopiedText('Reply to a@b.com with key sk-secret.', mappings)).toBe(
+      'Reply to {{EMAIL_1}} with key {{API_KEY_1}}.',
+    );
+  });
+
+  it('replaces the longest value first so a shorter secret cannot split it', () => {
+    const nested: MappingEntry[] = [
+      { placeholder: '{{API_KEY_1}}', value: 'sk-abc', type: 'api_key' },
+      { placeholder: '{{API_KEY_2}}', value: 'sk-abcdef', type: 'api_key' },
+    ];
+    expect(sealCopiedText('sk-abcdef', nested)).toBe('{{API_KEY_2}}');
+  });
+
+  it('is a no-op without mappings or text', () => {
+    expect(sealCopiedText('a@b.com', [])).toBe('a@b.com');
+    expect(sealCopiedText('', mappings)).toBe('');
+  });
+});
+
+describe('isEditableCopyTarget', () => {
+  it('detects composer-like targets', () => {
+    const root = document.createElement('div');
+    root.innerHTML =
+      '<textarea id="ta"></textarea><div id="ed" contenteditable="true"><span>x</span></div><p id="msg">hi</p>';
+    document.body.appendChild(root);
+    expect(isEditableCopyTarget(root.querySelector('#ta'))).toBe(true);
+    expect(isEditableCopyTarget(root.querySelector('#ed span'))).toBe(true);
+    expect(isEditableCopyTarget(root.querySelector('#msg'))).toBe(false);
   });
 });

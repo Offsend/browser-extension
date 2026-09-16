@@ -4,6 +4,7 @@ import { maybePingActive } from '@/core/telemetry';
 import { resolveAdapter } from '@/core/adapters';
 import { badgeStateForHealth, badgeStyle, type BadgeState } from '@/core/badge';
 import type { HealthReply, MappingsReply, OffsendMessage, OkReply } from '@/core/messaging/protocol';
+import { openWelcomePage } from '@/core/onboarding/page';
 
 /**
  * Service worker. Owns durable state: settings/policy, the encryption key, and
@@ -121,7 +122,7 @@ export default defineBackground(() => {
     await maybePingActive(browser.storage.local, telemetryEnabled);
   };
 
-  browser.runtime.onInstalled.addListener(async () => {
+  browser.runtime.onInstalled.addListener(async (details) => {
     // Write defaults and run migrations once.
     const settings = await store.getSettings();
     await store.saveSettings(settings);
@@ -129,6 +130,7 @@ export default defineBackground(() => {
     scheduleVaultPurge();
     purgeVault();
     void pingIfActive();
+    if (details.reason === 'install') openWelcomePage();
   });
 
   // Re-assert the default after the MV3 worker is torn down and revived.

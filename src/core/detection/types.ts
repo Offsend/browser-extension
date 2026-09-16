@@ -15,8 +15,12 @@ export type FindingType =
   | 'iban'
   | 'ip_address'
   | 'uuid'
-  | 'secret'
-  | 'custom';
+    | 'secret'
+    | 'custom'
+    | 'person'
+    | 'organization'
+    | 'address'
+    | 'location';
 
 /** A single detected sensitive value within the scanned text. */
 export interface Finding {

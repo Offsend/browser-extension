@@ -56,3 +56,30 @@ export function restoreInDom(root: HTMLElement, mappings: readonly MappingEntry[
   }
   return count;
 }
+
+/**
+ * Replace originals with placeholders so a copy carries what the AI saw.
+ * Longest value first so a shorter secret cannot split a longer one.
+ */
+export function sealCopiedText(
+  text: string,
+  mappings: readonly MappingEntry[],
+): string {
+  if (mappings.length === 0 || text.length === 0) return text;
+  const ordered = [...mappings].sort((a, b) => b.value.length - a.value.length);
+  let sealed = text;
+  for (const { value, placeholder } of ordered) {
+    if (!value) continue;
+    sealed = sealed.split(value).join(placeholder);
+  }
+  return sealed;
+}
+
+/** Copy from a composer / input must stay as-is — the user is still editing. */
+export function isEditableCopyTarget(target: EventTarget | null): boolean {
+  if (target instanceof Text) return isEditableCopyTarget(target.parentElement);
+  if (!(target instanceof Element)) return false;
+  return Boolean(
+    target.closest('textarea, input, [contenteditable="true"], [contenteditable=""]'),
+  );
+}

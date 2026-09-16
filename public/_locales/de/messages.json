@@ -4,7 +4,7 @@
     "description": "Extension name shown in the store and browser UI."
   },
   "extDescription": {
-    "message": "Maskiert API-Schlüssel, Passwörter und personenbezogene Daten in KI-Chat-Prompts — lokal im Browser vor dem Senden.",
+    "message": "Stoppt Geheimnisse und private Daten, bevor sie KI-Chats erreichen. Lokal, kein Konto, Open Source.",
     "description": "Extension description shown in the store and browser UI."
   }
 }
