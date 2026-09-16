@@ -1,4 +1,9 @@
+import { createRequire } from 'node:module';
 import { defineConfig } from 'wxt';
+
+const { version } = createRequire(import.meta.url)('./package.json') as {
+  version: string;
+};
 
 // Stable Firefox Add-ons ID — must not change after the first AMO submission.
 const FIREFOX_EXTENSION_ID = 'offsend@offsend.io';
@@ -10,6 +15,7 @@ export default defineConfig({
   // PNG or SVG) into 16/32/48/128 and wired into the manifest automatically.
   modules: ['@wxt-dev/module-react', '@wxt-dev/auto-icons'],
   manifest: {
+    version,
     // Name and description are localized via public/_locales/<lang>/messages.json.
     name: '__MSG_extName__',
     description: '__MSG_extDescription__',
