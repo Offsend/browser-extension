@@ -15,7 +15,7 @@ const policy = (): Policy => ({ mode: 'warn', enabledTypes: null, allowlist: [] 
 
 const encoder = new TextEncoder();
 
-function concat(...parts: Uint8Array[]): Uint8Array {
+function concat(...parts: Uint8Array[]): Uint8Array<ArrayBuffer> {
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
   let offset = 0;
   for (const part of parts) {
@@ -25,7 +25,7 @@ function concat(...parts: Uint8Array[]): Uint8Array {
   return out;
 }
 
-function pdfWithStream(dict: string, payload: Uint8Array): Uint8Array {
+function pdfWithStream(dict: string, payload: Uint8Array): Uint8Array<ArrayBuffer> {
   return concat(
     encoder.encode(`%PDF-1.1\n1 0 obj\n${dict}\nstream\n`),
     payload,
@@ -33,12 +33,12 @@ function pdfWithStream(dict: string, payload: Uint8Array): Uint8Array {
   );
 }
 
-function uncompressedPdf(content: string): Uint8Array {
+function uncompressedPdf(content: string): Uint8Array<ArrayBuffer> {
   const payload = encoder.encode(content);
   return pdfWithStream(`<< /Length ${payload.length} >>`, payload);
 }
 
-function flatePdf(content: string): Uint8Array {
+function flatePdf(content: string): Uint8Array<ArrayBuffer> {
   const payload = zlibSync(encoder.encode(content));
   return pdfWithStream(`<< /Filter /FlateDecode /Length ${payload.length} >>`, payload);
 }
