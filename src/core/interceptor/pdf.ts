@@ -44,7 +44,7 @@ export function pdfContentToText(content: string): string {
   if (!/\b(BT|Tj|TJ)\b/.test(content)) return '';
   const parts: string[] = [];
   const op =
-    /\[(?:[^\[\]()]|\((?:\\.|[^\\)])*\)|<[^<>]*>)*\]\s*TJ|\((?:\\.|[^\\)])*\)\s*(?:Tj|'|")|<([0-9A-Fa-f\s]+)>\s*Tj/g;
+    /\[(?:[^[\]()]|\((?:\\.|[^\\)])*\)|<[^<>]*>)*\]\s*TJ|\((?:\\.|[^\\)])*\)\s*(?:Tj|'|")|<([0-9A-Fa-f\s]+)>\s*Tj/g;
   for (const match of content.matchAll(op)) {
     const raw = match[0];
     if (/TJ$/.test(raw)) {
