@@ -50,7 +50,7 @@ promise, same idea, now in your AI chats.
 ## Supported sites
 
 chatgpt.com · claude.ai · gemini.google.com · chat.deepseek.com ·
-perplexity.ai · grok.com
+perplexity.ai · grok.com · copilot.microsoft.com
 
 Host permissions match this list exactly — Offsend does not request access to the
 rest of the web. See [`wxt.config.ts`](wxt.config.ts).
@@ -63,15 +63,25 @@ rest of the web. See [`wxt.config.ts`](wxt.config.ts).
   scanned at send time. Full detector list: [`src/core/detection/detectors.ts`](src/core/detection/detectors.ts).
 - **See findings as you type.** Sensitive values are underlined live in the
   composer, with a quiet chip summarising what will be masked on send.
-- **Attachments are covered too.** Files added via the picker, drag-and-drop, or
-  paste are scanned locally; masked copies replace the originals before the site
-  ever sees them.
+- **Text-like attachments are covered.** Source, CSV, JSON, and other text files
+  added via the picker, drag-and-drop, or paste are scanned locally; masked
+  copies replace the originals. DOCX / XLSX / PPTX and text-based PDFs are
+  extracted and scanned on device, but those files are not rewritten. Encrypted
+  or image-only PDFs, images, and legacy `.doc` / `.xls` are **not** inspected
+  — Offsend says so instead of pretending they were checked.
 - **Your own rules.** Add custom regex detectors in Settings alongside the
   built-in set.
+- **Optional Smart PII.** Off by default. On-device detection of person names,
+  organizations, street addresses, and places that regex misses. Nothing is
+  downloaded or uploaded.
+- **Portable local policy.** Export or import mode, detectors, custom rules,
+  trusted values, and the host allowlist as JSON. On/off and telemetry stay on
+  the device. Not `.offsend.yml` yet.
 - **Mask, don't lose meaning.** Sensitive values become stable placeholders like
   `{{API_KEY_1}}`, so your prompt still reads clearly to the AI.
-- **Reversible Restore.** Encrypted, time-limited mappings let you bring originals
-  back — in the conversation and in the composer.
+- **Reversible Restore.** Encrypted, time-limited mappings bring originals back
+  in the conversation automatically. Copy still uses placeholders — what the AI
+  saw. Manual Restore still covers the composer.
 - **Zero findings, zero friction.** Nothing sensitive? Offsend stays out of the way.
 - **Honest about coverage.** If a site changes its layout, Offsend reports
   degraded health instead of pretending you're protected.
@@ -85,6 +95,7 @@ the Send button, and file attachments — and scans at submit time, on device:
 
 1. You write or paste a prompt and press Enter (or click Send), or attach a file.
 2. Offsend scans the text (and text-like files) locally for sensitive values.
+   Unsupported files are labelled not scanned so they never look protected.
 3. Nothing found? It sends untouched.
 4. Something found? You choose: **Mask**, **Send anyway**, or **Cancel** — or let
    auto-mask handle it with a quiet toast.

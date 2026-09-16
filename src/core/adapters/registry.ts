@@ -1,5 +1,6 @@
 import { chatgptAdapter } from './chatgpt';
 import { claudeAdapter } from './claude';
+import { copilotAdapter } from './copilot';
 import { deepseekAdapter } from './deepseek';
 import { geminiAdapter } from './gemini';
 import { grokAdapter } from './grok';
@@ -17,6 +18,7 @@ export const ADAPTERS: readonly SiteAdapter[] = [
   deepseekAdapter,
   perplexityAdapter,
   grokAdapter,
+  copilotAdapter,
 ];
 
 /** Pick the adapter whose host globs match the given URL, if any. */

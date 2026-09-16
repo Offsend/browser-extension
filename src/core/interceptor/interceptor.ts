@@ -1,7 +1,14 @@
 import type { DetectionEngine, Finding } from '../detection';
 import { maskText } from '../masking';
 import type { MappingEntry } from '../masking';
-import type { Policy } from '../storage';
+import { resolveScanTypes } from '../detection/smart-pii';
+import {
+  DEFAULT_SMART_PII,
+  filterTrustedFindings,
+  type Policy,
+  type SmartPiiSettings,
+  type TrustedValue,
+} from '../storage';
 
 /**
  * The pure decision the interceptor reaches for one submit attempt. The content
@@ -39,12 +46,17 @@ export async function intercept(
   host: string,
   policy: Policy,
   engine: DetectionEngine,
+  trustedValues: readonly TrustedValue[] = [],
+  smartPii: SmartPiiSettings = DEFAULT_SMART_PII,
 ): Promise<InterceptOutcome> {
   if (isAllowlisted(host, policy.allowlist)) return { kind: 'allow' };
 
-  const findings = await engine.scan(text, {
-    types: policy.enabledTypes ?? undefined,
-  });
+  const findings = filterTrustedFindings(
+    await engine.scan(text, {
+      types: resolveScanTypes(policy.enabledTypes, smartPii),
+    }),
+    trustedValues,
+  );
   if (findings.length === 0) return { kind: 'allow' };
 
   const { masked, mappings } = maskText(text, findings);

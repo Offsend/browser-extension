@@ -50,6 +50,16 @@ const TARGETS = [
     ],
   },
   {
+    name: 'Copilot',
+    url: 'https://copilot.microsoft.com/',
+    composerCandidates: [
+      'textarea#userInput',
+      'textarea[data-testid="composer-input"]',
+      '[role="textbox"][contenteditable="true"]',
+      'textarea',
+    ],
+  },
+  {
     name: 'Grok',
     url: 'https://grok.com/',
     composerCandidates: [

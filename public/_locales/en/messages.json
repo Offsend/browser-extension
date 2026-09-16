@@ -4,7 +4,7 @@
     "description": "Extension name shown in the store and browser UI."
   },
   "extDescription": {
-    "message": "Mask API keys, passwords & PII in AI chat prompts — locally in your browser before you send.",
+    "message": "Stop secrets and private data before they reach AI chats. Local scan, no account, open source.",
     "description": "Extension description shown in the store and browser UI."
   }
 }

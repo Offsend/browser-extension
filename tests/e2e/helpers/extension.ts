@@ -8,7 +8,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.
 const EXTENSION_PATH = path.join(ROOT, '.output/chrome-mv3');
 
 /** Keep in sync with `SCHEMA_VERSION` in src/core/storage/schema.ts. */
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 7;
 
 interface ExtensionState {
   schemaVersion: number;
@@ -39,7 +39,7 @@ interface ChromeStorageLike {
 
 export async function launchExtensionContext(): Promise<BrowserContext> {
   const userDataDir = path.join(ROOT, '.output/e2e-user-data', randomUUID());
-  return chromium.launchPersistentContext(userDataDir, {
+  const context = await chromium.launchPersistentContext(userDataDir, {
     // Chromium extensions require a persistent, headful context. CI runs this
     // under xvfb (see `.github/workflows/ci.yml`).
     headless: false,
@@ -48,6 +48,18 @@ export async function launchExtensionContext(): Promise<BrowserContext> {
       `--load-extension=${EXTENSION_PATH}`,
     ],
   });
+  // First-run opens welcome.html; fixture tests need a quiet context.
+  if (context.serviceWorkers().length === 0) {
+    await context.waitForEvent('serviceworker');
+  }
+  const opened = context.pages().find((page) => page.url().includes('welcome.html'));
+  if (opened) {
+    await opened.close();
+  } else {
+    const extra = await context.waitForEvent('page', { timeout: 2000 }).catch(() => null);
+    if (extra?.url().includes('welcome.html')) await extra.close();
+  }
+  return context;
 }
 
 export async function setExtensionPolicyMode(
@@ -90,6 +102,42 @@ export async function setExtensionPolicyMode(
   );
 }
 
+export async function setExtensionSmartPii(context: BrowserContext, enabled: boolean): Promise<void> {
+  const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+  await worker.evaluate(
+    async ({ nextEnabled, schemaVersion }) => {
+      const chromeApi = (globalThis as unknown as { chrome: ChromeStorageLike }).chrome;
+      const state = {
+        schemaVersion,
+        settings: {
+          enabled: true,
+          policy: { mode: 'warn' as const, enabledTypes: null, allowlist: [] as string[] },
+          mappingTtlMinutes: 60,
+          telemetryEnabled: false,
+          customRules: [] as const,
+          trustedValues: [] as const,
+          autoRestoreResponses: true,
+          smartPii: {
+            enabled: nextEnabled,
+            person: true,
+            organization: true,
+            address: true,
+            location: true,
+          },
+        },
+      };
+      await new Promise<void>((resolve, reject) => {
+        chromeApi.storage.local.set({ 'offsend:state': state }, () => {
+          const err = chromeApi.runtime.lastError;
+          if (err) reject(new Error(err.message));
+          else resolve();
+        });
+      });
+    },
+    { nextEnabled: enabled, schemaVersion: SCHEMA_VERSION },
+  );
+}
+
 export async function newFixturePage(
   context: BrowserContext,
   url: string,
@@ -99,7 +147,8 @@ export async function newFixturePage(
     | 'gemini.html'
     | 'deepseek.html'
     | 'perplexity.html'
-    | 'grok.html',
+    | 'grok.html'
+    | 'copilot.html',
 ): Promise<Page> {
   const page = await context.newPage();
   const fixture = await readFile(path.join(ROOT, 'tests/e2e/fixtures', fixtureName), 'utf8');

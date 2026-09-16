@@ -1,6 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import type { Finding } from '@/core/detection';
-import { Overlay, type OverlayState, type ReviewState } from './Overlay';
+import { Overlay, type OverlayState, type ReviewAskState, type ReviewState } from './Overlay';
 import { OVERLAY_CSS } from './styles';
 
 export interface ToastAction {
@@ -11,6 +11,8 @@ export interface ToastAction {
 export interface OverlayController {
   showReview(review: ReviewState): void;
   hideReview(): void;
+  showReviewAsk(ask: ReviewAskState): void;
+  hideReviewAsk(): void;
   toast(text: string, action?: ToastAction): void;
   /** Update the live "will be masked" chip (empty array hides it). */
   setLiveFindings(findings: readonly Finding[]): void;
@@ -35,7 +37,7 @@ export function mountOverlay(doc: Document = document): OverlayController {
   shadow.appendChild(container);
 
   const root = createRoot(container);
-  let state: OverlayState = { review: null, toasts: [], live: [] };
+  let state: OverlayState = { review: null, reviewAsk: null, toasts: [], live: [] };
   let nextToastId = 1;
   let nextReviewSession = 1;
   const timers = new Set<ReturnType<typeof setTimeout>>();
@@ -57,6 +59,12 @@ export function mountOverlay(doc: Document = document): OverlayController {
     },
     hideReview() {
       set((prev) => ({ ...prev, review: null }));
+    },
+    showReviewAsk(ask) {
+      set((prev) => ({ ...prev, reviewAsk: ask }));
+    },
+    hideReviewAsk() {
+      set((prev) => ({ ...prev, reviewAsk: null }));
     },
     setLiveFindings(findings) {
       set((prev) => ({ ...prev, live: findings }));

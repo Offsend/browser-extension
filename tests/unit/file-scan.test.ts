@@ -26,6 +26,8 @@ describe('isScannableFile', () => {
     expect(isScannableFile(textFile('config.json', '{}', 'application/json'))).toBe(true);
     expect(isScannableFile(textFile('script.ts', 'x', 'video/mp2t'))).toBe(true);
     expect(isScannableFile(textFile('.env', 'A=1', ''))).toBe(true);
+    expect(isScannableFile(textFile('notes.docx', 'pk', ''))).toBe(true);
+    expect(isScannableFile(textFile('notes.pdf', '%PDF', ''))).toBe(true);
   });
 
   it('rejects binary and empty files', () => {
@@ -42,12 +44,14 @@ describe('interceptFiles', () => {
     expect(out.kind).toBe('allow');
   });
 
-  it('allows unscannable files but surfaces their names for a UI warn', async () => {
+  it('asks for confirmation when a file cannot be scanned', async () => {
     const binary = new File(['mail a@b.com'], 'blob.bin', { type: 'application/octet-stream' });
     const out = await interceptFiles([binary], 'x.com', policy(), engine);
-    expect(out.kind).toBe('allow');
-    if (out.kind !== 'allow') return;
-    expect(out.unscannedNames).toEqual(['blob.bin']);
+    expect(out.kind).toBe('coverage');
+    if (out.kind !== 'coverage') return;
+    expect(out.coverage).toEqual([
+      { name: 'blob.bin', status: 'not-scanned', findingCount: 0, maskable: false },
+    ]);
   });
 
   it('rejects oversized text files as unscannable', () => {
@@ -67,8 +71,45 @@ describe('interceptFiles', () => {
     );
     expect(out.kind).toBe('review');
     if (out.kind !== 'review') return;
-    expect(out.unscannedNames).toEqual(['pic.png']);
+    expect(out.coverage).toEqual([
+      { name: 'leaky.txt', status: 'scanned', findingCount: 1, maskable: true },
+      { name: 'pic.png', status: 'not-scanned', findingCount: 0, maskable: false },
+    ]);
     expect(out.findings).toHaveLength(1);
+  });
+
+  it('does not auto-mask when a sibling file was not scanned', async () => {
+    const out = await interceptFiles(
+      [
+        textFile('leaky.txt', 'mail a@b.com'),
+        new File([new Uint8Array(8)], 'pic.png', { type: 'image/png' }),
+      ],
+      'x.com',
+      policy({ mode: 'auto-mask' }),
+      engine,
+    );
+    expect(out.kind).toBe('review');
+    if (out.kind !== 'review') return;
+    expect(out.coverage.some((c) => c.status === 'not-scanned')).toBe(true);
+  });
+
+  it('skips findings that were always-allowed for that detector', async () => {
+    const out = await interceptFiles(
+      [textFile('a.txt', 'mail a@b.com')],
+      'x.com',
+      policy(),
+      engine,
+      [
+        {
+          id: 't1',
+          value: 'a@b.com',
+          detector: 'email',
+          type: 'email',
+          createdAt: 1,
+        },
+      ],
+    );
+    expect(out.kind).toBe('allow');
   });
 
   it('allows everything on allowlisted hosts', async () => {

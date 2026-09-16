@@ -56,4 +56,11 @@ describe('ADAPTERS registry', () => {
   it('includes grok.com', () => {
     expect(resolveAdapter('https://grok.com/chat', ADAPTERS)?.id).toBe('grok');
   });
+
+  it('includes copilot.microsoft.com and not M365 Copilot', () => {
+    expect(resolveAdapter('https://copilot.microsoft.com/', ADAPTERS)?.id).toBe('copilot');
+    expect(resolveAdapter('https://www.copilot.microsoft.com/', ADAPTERS)?.id).toBe('copilot');
+    expect(resolveAdapter('https://copilot.cloud.microsoft/', ADAPTERS)).toBeNull();
+    expect(resolveAdapter('https://m365.cloud.microsoft/chat', ADAPTERS)).toBeNull();
+  });
 });

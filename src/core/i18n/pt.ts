@@ -15,6 +15,10 @@ export const pt: Messages = {
     uuid: 'UUID',
     secret: 'segredo',
     custom: 'personalizado',
+    person: 'nome',
+    organization: 'organização',
+    address: 'endereço',
+    location: 'local',
   },
 
   typeName: {
@@ -29,6 +33,10 @@ export const pt: Messages = {
     uuid: 'UUID',
     secret: 'Segredos genéricos',
     custom: 'Regras personalizadas',
+    person: 'Nomes de pessoas',
+    organization: 'Organizações',
+    address: 'Endereços',
+    location: 'Locais',
   },
 
   overlay: {
@@ -40,6 +48,47 @@ export const pt: Messages = {
     attachAnyway: 'Anexar mesmo assim',
     cancel: 'Cancelar',
     liveChip: (summary) => `${summary} — será mascarado ao enviar`,
+    coverageTitle: 'Cobertura dos anexos',
+    attachmentScanned: 'Analisado',
+    attachmentNotScanned: 'Não analisado',
+    attachmentFoundNotMasked: 'Encontrado, não oculto',
+    attachmentCannotMask:
+      'Este valor continua no arquivo. O Offsend não pode ocultá-lo — cancele ou anexe como está.',
+    alwaysAllow: 'Permitir sempre',
+    why: 'Por quê?',
+    reviewAskTitle: (n) =>
+      `O Offsend protegeu ${n} ${values(n)} sensíveis neste dispositivo.`,
+    reviewAskBody: 'Se foi útil, uma avaliação ajuda outras pessoas a encontrar a extensão.',
+    reviewAskCta: 'Deixar uma avaliação',
+    reviewAskDismiss: 'Agora não',
+  },
+
+  explain: {
+    localNote: 'Detectado localmente. Nada foi enviado.',
+    fallback: 'Este valor corresponde a um padrão de dados sensíveis.',
+    'private-key-pem': 'Parece uma chave privada PEM.',
+    'aws-access-key-id': 'Corresponde à estrutura de um AWS access key id.',
+    'github-token': 'Corresponde à estrutura de um token de acesso pessoal do GitHub.',
+    'openai-key': 'Corresponde à estrutura de uma chave de API da OpenAI.',
+    'slack-token': 'Corresponde à estrutura de um token do Slack.',
+    'stripe-key': 'Corresponde à estrutura de uma chave de API da Stripe.',
+    'database-url-password': 'Esta URL de banco de dados inclui uma senha.',
+    jwt: 'Parece um JSON Web Token.',
+    'bearer-token': 'Parece um token Bearer HTTP.',
+    email: 'Parece um endereço de e-mail.',
+    iban: 'Corresponde a um IBAN e passa a soma de verificação.',
+    'credit-card': 'Parece um número de cartão e passa a verificação de Luhn.',
+    ipv4: 'Parece um endereço IPv4.',
+    uuid: 'Parece um UUID.',
+    'phone-e164': 'Parece um número de telefone internacional.',
+    'high-entropy-string':
+      'Parece um segredo gerado porque a sequência é incomumente aleatória. Este detector pode ter falsos positivos.',
+    'person-name':
+      'Parece o nome de uma pessoa. Detectado neste dispositivo. Este detector pode ter falsos positivos.',
+    'organization-name': 'Parece o nome de uma organização (por exemplo, com sufixo societário).',
+    'street-address': 'Parece um endereço postal.',
+    'geo-location':
+      'Parece uma cidade, um país ou uma região. Detectado neste dispositivo. Este detector pode ter falsos positivos.',
   },
 
   toast: {
@@ -84,6 +133,12 @@ export const pt: Messages = {
     active: 'ativo',
     protectionIncomplete: (reason) => `${reason} — a proteção pode estar incompleta.`,
     settings: 'Configurações',
+    privacyTest: 'Teste de privacidade',
+    statsTitle: 'Este dispositivo',
+    statsChecked: (n) => `${n} prompts analisados`,
+    statsProtected: (n) => `${n} prompts protegidos`,
+    statsMasked: (n) => `${n} ${values(n)} sensíveis mascarados`,
+    statsReset: 'Redefinir estatísticas',
     footer: 'O conteúdo nunca sai do seu dispositivo.',
   },
 
@@ -104,6 +159,15 @@ export const pt: Messages = {
     modeBlockHint: 'O envio fica bloqueado até que os valores sensíveis sejam mascarados.',
     detectorsTitle: 'Detectores',
     detectorsHint: 'Escolha quais tipos de valores sensíveis o Offsend analisa.',
+    smartPiiTitle: 'Smart PII',
+    smartPiiHint:
+      'Nomes, organizações, endereços e locais que os detectores regex não pegam. Roda neste dispositivo. Desligado por padrão. Nada é baixado ou enviado.',
+    smartPiiEnable: 'Detectar nomes e locais',
+    smartPiiEnableHint: 'Detector no dispositivo. Os detectores regex continuam iguais.',
+    smartPiiPerson: 'Nomes de pessoas',
+    smartPiiOrganization: 'Organizações',
+    smartPiiAddress: 'Endereços',
+    smartPiiLocation: 'Locais',
     customRulesTitle: 'Regras personalizadas',
     customRulesHint:
       'Padrões regex em JavaScript além dos detectores integrados. Ative «Regras personalizadas» em Detectores para habilitá-las ou desabilitá-las.',
@@ -111,6 +175,9 @@ export const pt: Messages = {
     restoreWindow: 'Janela de restauração',
     restoreWindowHint:
       'Por quanto tempo os mapeamentos criptografados são mantidos para restaurar os originais.',
+    autoRestore: 'Restaurar nas respostas da IA',
+    autoRestoreHint:
+      'Mostrar os valores originais na conversa neste dispositivo. Copiar ainda usa espaços reservados — o que a IA viu.',
     minutes: 'min',
     privacyTitle: 'Privacidade',
     privacyHint:
@@ -119,7 +186,45 @@ export const pt: Messages = {
     telemetryHint: 'Envia no máximo um ping anônimo por dia. Desative para não enviar nada.',
     allowlistTitle: 'Lista de permissões',
     allowlistHint: 'Os hosts listados aqui nunca são analisados. Um host por linha.',
+    trustedTitle: 'Valores confiáveis',
+    trustedHint:
+      'Valores exatos ignorados para o detector que os encontrou. Não é a lista de hosts.',
+    trustedEmpty: 'Nenhum valor ainda. Adicione um com «Permitir sempre» em um achado.',
+    trustedRemove: 'Remover',
+    policyTitle: 'Política',
+    policyHint:
+      'Exportar ou importar modo, detectores, regras, valores confiáveis e a lista de hosts. Liga/desliga e telemetria ficam neste dispositivo.',
+    policyExport: 'Exportar',
+    policyImport: 'Importar',
+    policyApply: 'Aplicar',
+    policyCancel: 'Cancelar',
+    policyExportWarn: 'O arquivo pode incluir valores confiáveis — strings exatas que você permitiu.',
+    policyPreviewTitle: 'Isso substituirá a política atual.',
+    policyPreviewKeep: 'Liga/desliga e telemetria não mudam.',
+    policyPreviewMode: (from, to) => `Modo: ${from} → ${to}`,
+    policyPreviewRules: (from, to) => `Regras personalizadas: ${from} → ${to}`,
+    policyPreviewTrusted: (from, to) => `Valores confiáveis: ${from} → ${to}`,
+    policyPreviewAllowlist: (from, to) => `Hosts na lista: ${from} → ${to}`,
+    policyErrorNotJson: 'Este arquivo não é um JSON válido.',
+    policyErrorNotPolicy: 'Este não é um arquivo de política do Offsend para o navegador.',
+    policyErrorFormat: 'Este arquivo precisa de um Offsend mais novo.',
+    policyUnknownKeys: (keys) => `Campos extras ignorados: ${keys}`,
+    policyErrorInvalid: 'Este arquivo de política tem um campo inválido.',
+    policyImported: 'Política importada.',
+    privacyTest: 'Executar teste de privacidade',
     resetDefaults: 'Restaurar padrões',
+  },
+
+  welcome: {
+    documentTitle: 'Offsend — Teste de privacidade',
+    introTitle: 'O Offsend verifica prompts de IA antes de saírem do navegador.',
+    trustLocal: 'Executa localmente',
+    trustAccount: 'Sem conta',
+    trustOpen: 'Código aberto',
+    runTest: 'Executar teste de privacidade',
+    maskedPreview: 'Após o mascaramento',
+    localNote: 'Detectado localmente. Nada foi enviado.',
+    done: 'Você está protegido.',
   },
 
   rules: {

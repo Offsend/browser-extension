@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Copilot fixture</title>
+  </head>
+  <body>
+    <main>
+      <section id="conversation" aria-label="Conversation"></section>
+      <!-- Mirrors copilot.microsoft.com: textarea#userInput and a Submit control. -->
+      <form id="composer-form">
+        <textarea
+          id="userInput"
+          data-testid="composer-input"
+          aria-label="Message Copilot"
+        ></textarea>
+        <button type="submit" aria-label="Submit">Send</button>
+      </form>
+    </main>
+    <script>
+      const form = document.querySelector('#composer-form');
+      const composer = document.querySelector('#userInput');
+      const conversation = document.querySelector('#conversation');
+
+      function submit() {
+        const text = composer.value;
+        const user = document.createElement('p');
+        user.dataset.role = 'user';
+        user.textContent = text;
+        conversation.append(user);
+
+        const assistant = document.createElement('p');
+        assistant.dataset.role = 'assistant';
+        assistant.textContent = `Copilot saw: ${text}`;
+        conversation.append(assistant);
+      }
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        submit();
+      });
+      composer.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) submit();
+      });
+    </script>
+  </body>
+</html>

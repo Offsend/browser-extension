@@ -35,8 +35,67 @@ describe('migrate', () => {
         telemetryEnabled: true,
       },
     });
-    expect(result.schemaVersion).toBe(4);
+    expect(result.schemaVersion).toBe(7);
     expect(result.settings.customRules).toEqual([]);
+    expect(result.settings.trustedValues).toEqual([]);
+    expect(result.settings.autoRestoreResponses).toBe(true);
+    expect(result.settings.smartPii.enabled).toBe(false);
+  });
+
+  it('migrates schema v4 to v5 with empty trustedValues', () => {
+    const result = migrate({
+      schemaVersion: 4,
+      settings: {
+        enabled: true,
+        policy: { mode: 'warn', enabledTypes: null, allowlist: [] },
+        mappingTtlMinutes: 60,
+        telemetryEnabled: true,
+        customRules: [],
+      },
+    });
+    expect(result.schemaVersion).toBe(7);
+    expect(result.settings.trustedValues).toEqual([]);
+    expect(result.settings.autoRestoreResponses).toBe(true);
+  });
+
+  it('migrates schema v5 to v6 with autoRestoreResponses on', () => {
+    const result = migrate({
+      schemaVersion: 5,
+      settings: {
+        enabled: true,
+        policy: { mode: 'warn', enabledTypes: null, allowlist: [] },
+        mappingTtlMinutes: 60,
+        telemetryEnabled: true,
+        customRules: [],
+        trustedValues: [],
+      },
+    });
+    expect(result.schemaVersion).toBe(7);
+    expect(result.settings.autoRestoreResponses).toBe(true);
+    expect(result.settings.smartPii.enabled).toBe(false);
+  });
+
+  it('migrates schema v6 to v7 with Smart PII off', () => {
+    const result = migrate({
+      schemaVersion: 6,
+      settings: {
+        enabled: true,
+        policy: { mode: 'warn', enabledTypes: null, allowlist: [] },
+        mappingTtlMinutes: 60,
+        telemetryEnabled: true,
+        customRules: [],
+        trustedValues: [],
+        autoRestoreResponses: true,
+      },
+    });
+    expect(result.schemaVersion).toBe(7);
+    expect(result.settings.smartPii).toEqual({
+      enabled: false,
+      person: true,
+      organization: true,
+      address: true,
+      location: true,
+    });
   });
 });
 
@@ -51,6 +110,9 @@ describe('SettingsStore', () => {
       mappingTtlMinutes: 120,
       telemetryEnabled: false,
       customRules: [],
+      trustedValues: [],
+      autoRestoreResponses: true,
+      smartPii: DEFAULT_STATE.settings.smartPii,
     });
     const reloaded = await store.getSettings();
     expect(reloaded.enabled).toBe(false);

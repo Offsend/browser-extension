@@ -39,6 +39,8 @@ export default defineConfig({
       'https://perplexity.ai/*',
       'https://grok.com/*',
       'https://www.grok.com/*',
+      'https://copilot.microsoft.com/*',
+      'https://www.copilot.microsoft.com/*',
     ],
     permissions: ['storage', 'alarms'],
     // The on-page overlay renders the extension icon, so it must be readable
@@ -55,6 +57,8 @@ export default defineConfig({
           'https://perplexity.ai/*',
           'https://grok.com/*',
           'https://www.grok.com/*',
+          'https://copilot.microsoft.com/*',
+          'https://www.copilot.microsoft.com/*',
         ],
       },
     ],
