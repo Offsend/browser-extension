@@ -2,7 +2,18 @@ import { useEffect, useState } from 'react';
 import { t as i18n } from '@/core/i18n';
 import type { HealthReply } from '@/core/messaging/protocol';
 import { openWelcomePage } from '@/core/onboarding/page';
-import { DEFAULT_STATS, loadStats, resetStats, type LocalStats } from '@/core/stats';
+import {
+  DEFAULT_STATS,
+  GITHUB_URL,
+  loadStats,
+  markReviewClicked,
+  markReviewDismissed,
+  milestoneProgress,
+  resetStats,
+  shouldAskReview,
+  storeReviewUrl,
+  type LocalStats,
+} from '@/core/stats';
 import { SettingsStore, createBrowserBackend, type PolicyMode } from '@/core/storage';
 import { Badge, Brand, Button, IGear, Toggle, useTheme, type Theme } from '@/ui';
 
@@ -70,6 +81,7 @@ export function App() {
   const [mode, setMode] = useState<PolicyMode | null>(null);
   const [enabled, setEnabled] = useState(true);
   const [stats, setStats] = useState<LocalStats>(DEFAULT_STATS);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const backend = createBrowserBackend(browser.storage.local);
@@ -125,6 +137,32 @@ export function App() {
       }, 50);
     }
   };
+
+  const backend = () => createBrowserBackend(browser.storage.local);
+
+  const onRate = () => {
+    void markReviewClicked(backend()).then(setStats);
+    void browser.tabs.create({ url: storeReviewUrl() });
+  };
+
+  const onDismissReview = () => {
+    void markReviewDismissed(backend()).then(setStats);
+  };
+
+  const onShare = () => {
+    if (!navigator.clipboard) return;
+    const text = `${M.popup.shareText(stats.valuesMasked)} ${storeReviewUrl()}`;
+    void navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1500);
+      })
+      .catch(() => undefined);
+  };
+
+  const milestone = milestoneProgress(stats.valuesMasked);
+  const askReview = shouldAskReview(stats);
 
   return (
     <main
@@ -189,6 +227,37 @@ export function App() {
           <div>{M.popup.statsProtected(stats.promptsProtected)}</div>
           <div>{M.popup.statsMasked(stats.valuesMasked)}</div>
         </div>
+        {stats.valuesMasked > 0 && (
+          <div style={{ marginTop: 10 }}>
+            <div
+              style={{
+                height: 6,
+                borderRadius: 999,
+                background: t.bg2,
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  height: '100%',
+                  width: `${Math.round(milestone.ratio * 100)}%`,
+                  background: t.blue,
+                  borderRadius: 999,
+                }}
+              />
+            </div>
+            <div style={{ marginTop: 6, fontSize: 11, color: t.textSub }}>
+              {milestone.next
+                ? M.popup.milestoneNext(milestone.next, milestone.next - stats.valuesMasked)
+                : M.popup.milestoneTop}
+            </div>
+            {milestone.achieved > 0 && (
+              <div style={{ marginTop: 2, fontSize: 11, color: t.textMuted }}>
+                {M.popup.milestoneReached(milestone.achieved)}
+              </div>
+            )}
+          </div>
+        )}
         <button
           type="button"
           onClick={() => {
@@ -207,6 +276,33 @@ export function App() {
           {M.popup.statsReset}
         </button>
       </div>
+
+      {askReview && (
+        <div
+          style={{
+            marginTop: 10,
+            background: t.card,
+            border: `1px solid ${t.border}`,
+            borderRadius: 12,
+            padding: '12px 14px',
+          }}
+        >
+          <p style={{ margin: 0, fontSize: 12.5, fontWeight: 600, lineHeight: 1.45 }}>
+            {M.overlay.reviewAskTitle(stats.valuesMasked)}
+          </p>
+          <p style={{ margin: '6px 0 0', fontSize: 11.5, color: t.textSub, lineHeight: 1.45 }}>
+            {M.overlay.reviewAskBody}
+          </p>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <Button t={t} variant="primary" sm onClick={onRate}>
+              {M.overlay.reviewAskCta}
+            </Button>
+            <Button t={t} variant="ghost" sm onClick={onDismissReview}>
+              {M.overlay.reviewAskDismiss}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {health?.status === 'degraded' && health.reason && (
         <p
@@ -245,6 +341,22 @@ export function App() {
         >
           {M.popup.settings}
         </Button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button t={t} variant="ghost" sm onClick={onShare}>
+            {copied ? M.popup.shareCopied : M.popup.share}
+          </Button>
+          <Button t={t} variant="ghost" sm onClick={onRate}>
+            {M.popup.rate}
+          </Button>
+          <Button
+            t={t}
+            variant="ghost"
+            sm
+            onClick={() => void browser.tabs.create({ url: GITHUB_URL })}
+          >
+            {M.popup.github}
+          </Button>
+        </div>
       </div>
 
       <p style={{ margin: '12px 0 2px', fontSize: 11, color: t.textMuted, textAlign: 'center' }}>

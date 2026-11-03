@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_STATS,
+  REVIEW_MAX_DISMISSALS,
   REVIEW_PROMPT_AFTER,
+  REVIEW_SNOOZE_AFTER,
   applyPromptRecord,
+  milestoneProgress,
   parseStats,
   shouldAskReview,
 } from '@/core/stats';
@@ -31,6 +34,31 @@ describe('local stats', () => {
     stats = applyPromptRecord(stats, 1);
     expect(shouldAskReview(stats)).toBe(true);
     expect(shouldAskReview({ ...stats, reviewAsked: true })).toBe(false);
+  });
+
+  it('snoozes after a dismissal and stops after the last one', () => {
+    const base = { ...DEFAULT_STATS, promptsProtected: REVIEW_PROMPT_AFTER };
+    const snoozed = {
+      ...base,
+      reviewDismissals: 1,
+      reviewSnoozedUntilProtected: REVIEW_PROMPT_AFTER + REVIEW_SNOOZE_AFTER,
+    };
+    expect(shouldAskReview(snoozed)).toBe(false);
+    expect(
+      shouldAskReview({
+        ...snoozed,
+        promptsProtected: REVIEW_PROMPT_AFTER + REVIEW_SNOOZE_AFTER,
+      }),
+    ).toBe(true);
+    expect(
+      shouldAskReview({ ...base, reviewDismissals: REVIEW_MAX_DISMISSALS }),
+    ).toBe(false);
+  });
+
+  it('tracks milestone progress', () => {
+    expect(milestoneProgress(0)).toEqual({ achieved: 0, next: 1, ratio: 0 });
+    expect(milestoneProgress(3)).toEqual({ achieved: 1, next: 5, ratio: 0.5 });
+    expect(milestoneProgress(1000).next).toBeNull();
   });
 
   it('ignores corrupt storage', () => {

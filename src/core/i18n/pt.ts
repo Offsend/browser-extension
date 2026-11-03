@@ -139,6 +139,18 @@ export const pt: Messages = {
     statsProtected: (n) => `${n} prompts protegidos`,
     statsMasked: (n) => `${n} ${values(n)} sensíveis mascarados`,
     statsReset: 'Redefinir estatísticas',
+    share: 'Compartilhar',
+    shareCopied: 'Copiado',
+    shareText: (n: number) =>
+      n > 0
+        ? `O Offsend mascarou ${n} ${values(n)} sensíveis para mim antes que chegassem aos chats de IA — localmente, sem conta.`
+        : 'O Offsend mascara segredos e dados privados localmente, antes que cheguem aos chats de IA — sem conta, código aberto.',
+    github: 'GitHub',
+    rate: 'Avaliar',
+    milestoneNext: (_next: number, remaining: number) =>
+      `Faltam ${remaining} ${values(remaining)} para o próximo marco`,
+    milestoneReached: (n: number) => `${n} ${values(n)} protegidos — marco alcançado`,
+    milestoneTop: 'Marco máximo alcançado',
     footer: 'O conteúdo nunca sai do seu dispositivo.',
   },
 
@@ -222,6 +234,13 @@ export const pt: Messages = {
     trustAccount: 'Sem conta',
     trustOpen: 'Código aberto',
     runTest: 'Executar teste de privacidade',
+    tryYourText: 'Teste com seu próprio texto',
+    tryHint: 'Edite o exemplo ou cole seu próprio texto. A análise é só neste dispositivo — nada é salvo ou enviado.',
+    openChatGpt: 'Abrir o ChatGPT',
+    pinTitle: 'Fixe o Offsend',
+    pinHint:
+      'Clique no ícone de quebra-cabeça na barra do navegador e fixe o Offsend para sempre ver se a proteção está ativa.',
+    nothingFound: 'Nenhum dado sensível encontrado.',
     maskedPreview: 'Após o mascaramento',
     localNote: 'Detectado localmente. Nada foi enviado.',
     done: 'Você está protegido.',

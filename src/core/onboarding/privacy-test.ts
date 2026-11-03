@@ -19,9 +19,12 @@ export interface PrivacyTestResult {
   readonly masked: string;
 }
 
-/** Scan the canned prompt with the real engine. No network, no storage. */
-export async function runPrivacyTest(engine: DetectionEngine): Promise<PrivacyTestResult> {
-  const findings = await engine.scan(PRIVACY_TEST_PROMPT);
-  const { masked } = maskText(PRIVACY_TEST_PROMPT, findings, DEMO_SALT);
+/** Scan `text` (or the canned prompt) with the real engine. No network, no storage. */
+export async function runPrivacyTest(
+  engine: DetectionEngine,
+  text: string = PRIVACY_TEST_PROMPT,
+): Promise<PrivacyTestResult> {
+  const findings = await engine.scan(text);
+  const { masked } = maskText(text, findings, DEMO_SALT);
   return { findings, masked };
 }
