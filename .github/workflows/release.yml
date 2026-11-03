@@ -4,15 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       publish_chrome:
-        description: 'Опубликовать в Chrome Web Store'
+        description: 'Publish to the Chrome Web Store'
         type: boolean
         default: true
       publish_firefox:
-        description: 'Опубликовать в Firefox Add-ons'
+        description: 'Publish to Firefox Add-ons'
         type: boolean
         default: true
       dry_run:
-        description: 'Проверить доступ, но не отправлять в магазины'
+        description: 'Check access, but do not submit to the stores'
         type: boolean
         default: false
 
