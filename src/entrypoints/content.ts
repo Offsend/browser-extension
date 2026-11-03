@@ -13,7 +13,8 @@ import { isMaskCommitted, maskText, type MappingEntry } from '@/core/masking';
 import type { MappingsReply, OffsendMessage, OkReply } from '@/core/messaging/protocol';
 import { isEditableCopyTarget, restoreInDom, restoreInText, sealCopiedText } from '@/core/restore';
 import {
-  markReviewAsked,
+  markReviewClicked,
+  markReviewDismissed,
   recordPrompt,
   shouldAskReview,
   storeReviewUrl,
@@ -195,14 +196,17 @@ export default defineContentScript({
     const noteScan = (masked: number) => {
       void recordPrompt(localBackend, masked).then((stats) => {
         if (!shouldAskReview(stats)) return;
-        void markReviewAsked(localBackend);
         overlay.showReviewAsk({
           protectedCount: stats.valuesMasked,
           onReview: () => {
             overlay.hideReviewAsk();
+            void markReviewClicked(localBackend);
             window.open(storeReviewUrl(), '_blank', 'noopener');
           },
-          onDismiss: () => overlay.hideReviewAsk(),
+          onDismiss: () => {
+            overlay.hideReviewAsk();
+            void markReviewDismissed(localBackend);
+          },
         });
       });
     };

@@ -139,6 +139,18 @@ export const es: Messages = {
     statsProtected: (n) => `${n} prompts protegidos`,
     statsMasked: (n) => `${n} ${values(n)} sensibles enmascarados`,
     statsReset: 'Restablecer estadísticas',
+    share: 'Compartir',
+    shareCopied: 'Copiado',
+    shareText: (n: number) =>
+      n > 0
+        ? `Offsend ha enmascarado ${n} ${values(n)} sensibles por mí antes de que llegaran a los chats de IA — en local, sin cuenta.`
+        : 'Offsend enmascara secretos y datos privados en local antes de que lleguen a los chats de IA — sin cuenta, código abierto.',
+    github: 'GitHub',
+    rate: 'Valorar',
+    milestoneNext: (_next: number, remaining: number) =>
+      `${remaining} ${values(remaining)} más para el siguiente hito`,
+    milestoneReached: (n: number) => `${n} ${values(n)} protegidos — hito alcanzado`,
+    milestoneTop: 'Hito máximo alcanzado',
     footer: 'El contenido nunca sale de tu dispositivo.',
   },
 
@@ -222,6 +234,13 @@ export const es: Messages = {
     trustAccount: 'Sin cuenta',
     trustOpen: 'Código abierto',
     runTest: 'Ejecutar prueba de privacidad',
+    tryYourText: 'Pruébalo con tu propio texto',
+    tryHint: 'Edita el ejemplo o pega tu propio texto. Se analiza solo en este dispositivo — no se guarda ni se envía.',
+    openChatGpt: 'Abrir ChatGPT',
+    pinTitle: 'Fija Offsend',
+    pinHint:
+      'Haz clic en el icono de la pieza de rompecabezas en la barra del navegador y fija Offsend para ver siempre si la protección está activa.',
+    nothingFound: 'No se encontraron datos sensibles.',
     maskedPreview: 'Tras el enmascaramiento',
     localNote: 'Detectado en local. No se subió nada.',
     done: 'Estás protegido.',

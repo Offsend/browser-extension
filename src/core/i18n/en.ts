@@ -145,6 +145,18 @@ export const en = {
     statsProtected: (n: number) => `${n} prompts protected`,
     statsMasked: (n: number) => `${n} sensitive ${values(n)} masked`,
     statsReset: 'Reset stats',
+    share: 'Share',
+    shareCopied: 'Copied',
+    shareText: (n: number) =>
+      n > 0
+        ? `Offsend has masked ${n} sensitive ${values(n)} for me before they reached AI chats — locally, with no account.`
+        : 'Offsend masks secrets and private data locally before they reach AI chats — no account, open source.',
+    github: 'GitHub',
+    rate: 'Rate',
+    milestoneNext: (next: number, remaining: number) =>
+      `${remaining} more ${values(remaining)} to reach ${next}`,
+    milestoneReached: (n: number) => `${n} ${values(n)} protected — milestone reached`,
+    milestoneTop: 'Top milestone reached',
     footer: 'Content never leaves your device.',
   },
 
@@ -227,6 +239,13 @@ export const en = {
     trustAccount: 'No account',
     trustOpen: 'Open source',
     runTest: 'Run privacy test',
+    tryYourText: 'Try your own text',
+    tryHint: 'Edit the example or paste your own text. It is scanned only on this device — never stored or sent.',
+    openChatGpt: 'Open ChatGPT',
+    pinTitle: 'Pin Offsend',
+    pinHint:
+      'Click the puzzle-piece icon in the browser toolbar, then pin Offsend so you can always see when protection is active.',
+    nothingFound: 'Nothing sensitive found.',
     maskedPreview: 'After masking',
     localNote: 'Detected locally. Nothing was uploaded.',
     done: "You're protected.",

@@ -19,4 +19,13 @@ describe('privacy test payload', () => {
     expect(masked).not.toContain('sk-proj-examplekey1234567890');
     expect(masked).not.toContain('postgres://admin:s3cret@db.internal:5432/app');
   });
+
+  it('scans custom user text instead of the canned prompt', async () => {
+    const { findings, masked } = await runPrivacyTest(
+      new TsEngine(),
+      'Reach me at alice@example.org',
+    );
+    expect(findings.map((f) => f.detector)).toEqual(['email']);
+    expect(masked).not.toContain('alice@example.org');
+  });
 });

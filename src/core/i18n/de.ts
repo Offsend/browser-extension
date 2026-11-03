@@ -139,6 +139,18 @@ export const de: Messages = {
     statsProtected: (n) => `${n} Prompts geschützt`,
     statsMasked: (n) => `${n} sensible ${values(n)} maskiert`,
     statsReset: 'Statistik zurücksetzen',
+    share: 'Teilen',
+    shareCopied: 'Kopiert',
+    shareText: (n: number) =>
+      n > 0
+        ? `Offsend hat ${n} sensible ${values(n)} für mich maskiert, bevor sie KI-Chats erreicht haben — lokal, ohne Konto.`
+        : 'Offsend maskiert Geheimnisse und private Daten lokal, bevor sie KI-Chats erreichen — ohne Konto, Open Source.',
+    github: 'GitHub',
+    rate: 'Bewerten',
+    milestoneNext: (_next: number, remaining: number) =>
+      `Noch ${remaining} ${values(remaining)} bis zum nächsten Meilenstein`,
+    milestoneReached: (n: number) => `${n} ${values(n)} geschützt — Meilenstein erreicht`,
+    milestoneTop: 'Höchster Meilenstein erreicht',
     footer: 'Inhalte verlassen Ihr Gerät nie.',
   },
 
@@ -222,6 +234,13 @@ export const de: Messages = {
     trustAccount: 'Kein Konto',
     trustOpen: 'Open Source',
     runTest: 'Datenschutztest ausführen',
+    tryYourText: 'Mit eigenem Text testen',
+    tryHint: 'Bearbeiten Sie das Beispiel oder fügen Sie eigenen Text ein. Geprüft wird nur auf diesem Gerät — nichts wird gespeichert oder gesendet.',
+    openChatGpt: 'ChatGPT öffnen',
+    pinTitle: 'Offsend anheften',
+    pinHint:
+      'Klicken Sie auf das Puzzle-Symbol in der Browserleiste und heften Sie Offsend an, um immer zu sehen, ob der Schutz aktiv ist.',
+    nothingFound: 'Keine sensiblen Daten gefunden.',
     maskedPreview: 'Nach der Maskierung',
     localNote: 'Lokal erkannt. Nichts wurde hochgeladen.',
     done: 'Sie sind geschützt.',
