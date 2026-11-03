@@ -3,8 +3,16 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
+      publish_chrome:
+        description: 'Опубликовать в Chrome Web Store'
+        type: boolean
+        default: true
+      publish_firefox:
+        description: 'Опубликовать в Firefox Add-ons'
+        type: boolean
+        default: true
       dry_run:
-        description: 'Validate credentials and build without actually publishing'
+        description: 'Проверить доступ, но не отправлять в магазины'
         type: boolean
         default: false
 
@@ -26,12 +34,15 @@ jobs:
       - run: npm test
 
       - name: Build & zip (Chrome)
+        if: inputs.publish_chrome
         run: npm run zip
 
       - name: Build & zip (Firefox)
+        if: inputs.publish_firefox
         run: npm run zip:firefox
 
       - name: Upload Chrome ZIP artifact
+        if: inputs.publish_chrome
         uses: actions/upload-artifact@v4
         with:
           name: chrome-extension
@@ -41,6 +52,7 @@ jobs:
           include-hidden-files: true
 
       - name: Upload Firefox ZIP artifacts
+        if: inputs.publish_firefox
         uses: actions/upload-artifact@v4
         with:
           name: firefox-extension
@@ -50,8 +62,14 @@ jobs:
           if-no-files-found: error
           include-hidden-files: true
 
+      # Stores are independent. A duplicate Firefox version (AMO 409) is not a
+      # failure: scripts/submit-store.mjs exits 0 for that case. A real error
+      # in one store still lets the other store publish.
       - name: Submit to Chrome Web Store
-        run: npx wxt submit ${{ inputs.dry_run && '--dry-run' || '' }} --chrome-zip .output/*-chrome.zip
+        id: chrome
+        if: inputs.publish_chrome
+        continue-on-error: true
+        run: node scripts/submit-store.mjs ${{ inputs.dry_run && '--dry-run' || '' }} --chrome-zip .output/*-chrome.zip
         env:
           CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
           CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
@@ -59,9 +77,16 @@ jobs:
           CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
 
       - name: Submit to Firefox Add-ons
-        run: npx wxt submit ${{ inputs.dry_run && '--dry-run' || '' }} --firefox-zip .output/*-firefox.zip --firefox-sources-zip .output/*-sources.zip
+        id: firefox
+        if: inputs.publish_firefox
+        continue-on-error: true
+        run: node scripts/submit-store.mjs ${{ inputs.dry_run && '--dry-run' || '' }} --firefox-zip .output/*-firefox.zip --firefox-sources-zip .output/*-sources.zip
         env:
           FIREFOX_EXTENSION_ID: ${{ secrets.FIREFOX_EXTENSION_ID }}
           FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
           FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}
           FIREFOX_CHANNEL: listed
+
+      - name: Fail if a selected store submission failed
+        if: always() && (steps.chrome.outcome == 'failure' || steps.firefox.outcome == 'failure')
+        run: exit 1
